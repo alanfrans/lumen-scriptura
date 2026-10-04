@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Lumen Scriptura</title>
+  </head>
+  <body>
+    <canvas id="game" tabindex="0"></canvas>
+
+    <div id="hud">
+      <div id="status"></div>
+      <div id="compass" class="hidden">
+        <div id="compass-arrow">&#9650;</div>
+        <span id="compass-text"></span>
+      </div>
+      <div id="prompt" class="hidden"></div>
+      <div id="toasts"></div>
+      <div id="verse-card" class="hidden">
+        <div class="ref"></div>
+        <div class="text"></div>
+      </div>
+      <div id="dialog" class="hidden">
+        <div class="speaker"></div>
+        <div class="text"></div>
+        <div class="options"></div>
+        <div class="close-hint"></div>
+      </div>
+      <div id="codex" class="hidden"></div>
+      <div id="help">WASD move &middot; Shift sprint &middot; Drag mouse to look &middot; Wheel zoom &middot; E interact &middot; H ride &middot; C Codex</div>
+    </div>
+
+    <div id="title">
+      <div class="title-inner">
+        <h1>Lumen Scriptura</h1>
+        <p class="sub">Phase 0 &middot; The First Day &middot; Genesis 1</p>
+        <p>
+          Scripture has been scattered across the old world. In this valley lie the
+          thirty-one verses of Genesis 1. Each one sends a column of light into the
+          sky. Find them, gather them, and fill your Codex.
+        </p>
+        <p>
+          Most people here will help you. A few will not. There is always another way in.
+        </p>
+        <button id="begin">Begin</button>
+      </div>
+    </div>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
