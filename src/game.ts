@@ -1,5 +1,6 @@
 import {
   ArcRotateCamera,
+  CascadedShadowGenerator,
   Color3,
   Color4,
   Constants,
@@ -13,6 +14,10 @@ import {
   StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
+import { Palette } from "./art/materials";
+import { buildPerson, type Rig } from "./art/models";
+import { Sky } from "./art/sky";
+import { heightAt } from "./world/terrain";
 import { CANON_LEVELS, GENESIS_CHAPTERS, GENESIS_VERSES, TORAH_VERSES } from "./data/canon";
 import { GENESIS_1 } from "./data/genesis1";
 import { PLACEMENTS, type Placement } from "./data/layout";
@@ -53,6 +58,12 @@ type XZ = { x: number; z: number };
 const distXZ = (a: XZ, b: XZ) => Math.hypot(a.x - b.x, a.z - b.z);
 const fmt = (n: number) => n.toLocaleString("en-US");
 
+function turnToward(current: number, target: number, maxStep: number): number {
+  let d = target - current;
+  d = Math.atan2(Math.sin(d), Math.cos(d));
+  return current + Math.max(-maxStep, Math.min(maxStep, d));
+}
+
 function compassWord(from: XZ, to: XZ): string {
   const deg = (Math.atan2(to.x - from.x, to.z - from.z) * 180) / Math.PI;
   const names = ["north", "north-east", "east", "south-east", "south", "south-west", "west", "north-west"];
@@ -64,6 +75,9 @@ export class Game {
   private readonly scene: Scene;
   private readonly camera: ArcRotateCamera;
   private readonly player: Mesh;
+  private readonly playerRig: Rig;
+  private readonly sky: Sky;
+  private playerSpeed = 0;
   private readonly world: World;
   private readonly lights: VerseLights;
   private readonly glow: GlowLayer;
@@ -86,28 +100,37 @@ export class Game {
     this.scene = new Scene(this.engine);
     this.scene.fogMode = Scene.FOGMODE_EXP2;
 
-    this.hemi = new HemisphericLight("sky", new Vector3(0, 1, 0), this.scene);
-    this.hemi.groundColor = new Color3(0.35, 0.3, 0.25);
-    this.sun = new DirectionalLight("sun", new Vector3(-0.5, -1, 0.35), this.scene);
+    const sunDir = new Vector3(-0.5, -0.85, 0.35);
+    this.hemi = new HemisphericLight("sky-light", new Vector3(0, 1, 0), this.scene);
+    this.hemi.groundColor = new Color3(0.42, 0.36, 0.3);
+    this.sun = new DirectionalLight("sun-light", sunDir, this.scene);
+    this.sun.diffuse = new Color3(1, 0.93, 0.8);
     this.glow = new GlowLayer("glow", this.scene);
     this.glow.intensity = 0.7;
+    this.sky = new Sky(this.scene, sunDir);
 
-    this.world = buildWorld(this.scene);
+    const pal = new Palette(this.scene);
+    this.world = buildWorld(this.scene, pal);
     this.lights = new VerseLights(this.scene, this.glow);
     for (const p of PLACEMENTS) {
       if (this.collected.has(p.verse)) this.lights.addResidue(p.x, p.z);
       else this.lights.add(p.verse, p.x, p.y ?? 0, p.z);
     }
 
-    this.player = MeshBuilder.CreateCapsule("player", { radius: 0.4, height: 1.8 }, this.scene);
-    const pm = new StandardMaterial("player-mat", this.scene);
-    pm.diffuseColor = new Color3(0.25, 0.38, 0.62);
-    pm.specularColor = Color3.Black();
-    this.player.material = pm;
-    this.player.position.set(this.state.px, 0.9, this.state.pz);
+    this.playerRig = buildPerson(this.scene, pal, "player", {
+      robe: [0.24, 0.34, 0.55],
+      trim: [0.6, 0.5, 0.35],
+      head: [0.78, 0.72, 0.6],
+      satchel: true,
+    });
+    this.player = this.playerRig.root;
+    this.player.position.set(this.state.px, heightAt(this.state.px, this.state.pz), this.state.pz);
+    const anchor = new Mesh("camera-anchor", this.scene);
+    anchor.parent = this.player;
+    anchor.position.y = 1.6;
 
     this.camera = new ArcRotateCamera("cam", -Math.PI / 2, 1.12, 16, this.player.position.clone(), this.scene);
-    this.camera.lockedTarget = this.player;
+    this.camera.lockedTarget = anchor;
     this.camera.attachControl(canvas, true);
     this.camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
     this.camera.lowerRadiusLimit = 6;
@@ -118,6 +141,7 @@ export class Game {
     this.camera.minZ = 0.1;
     this.camera.maxZ = 1200;
 
+    this.setupShadows();
     this.restoreWorld();
     this.applyHope();
     this.refreshEmphasis();
@@ -135,13 +159,32 @@ export class Game {
 
   // ---- setup ----
 
+  private setupShadows(): void {
+    const csm = new CascadedShadowGenerator(1024, this.sun);
+    csm.numCascades = 3;
+    csm.shadowMaxZ = 140;
+    csm.lambda = 0.85;
+    csm.stabilizeCascades = true;
+    csm.usePercentageCloserFiltering = true;
+    csm.setDarkness(0.35);
+    for (const m of this.scene.meshes) {
+      if (/^(verse|beacon|sky|sun|water|ground|camera-anchor)/.test(m.name)) continue;
+      csm.addShadowCaster(m, false);
+      m.receiveShadows = true;
+    }
+    this.world.ground.receiveShadows = true;
+  }
+
   private restoreWorld(): void {
     const s = this.state;
     if (s.keyTaken) this.world.key.dispose();
     if (s.jarTaken) this.world.jar.dispose();
     if (s.doorOpen) this.openDoor();
-    this.world.horse.position.x = s.horseX;
-    this.world.horse.position.z = s.horseZ;
+    this.placeHorse(s.horseX, s.horseZ);
+  }
+
+  private placeHorse(x: number, z: number): void {
+    this.world.horse.root.position.set(x, heightAt(x, z), z);
   }
 
   private bindInput(): void {
@@ -184,12 +227,14 @@ export class Game {
     this.time += dt;
     this.lights.update(this.time);
     const paused = this.hud.dialogOpen || this.hud.codexOpen;
+    this.playerSpeed = 0;
     if (!paused) {
       this.movePlayer(dt);
       this.updateWatchman(dt);
       this.checkVerses();
       this.tickStipend(dt);
     }
+    this.animateRigs(dt, paused);
     this.updatePrompt(paused);
     this.updateCompass();
     this.updateStatus();
@@ -218,23 +263,41 @@ export class Game {
       const speed = this.mounted ? RIDE : k.has("ShiftLeft") || k.has("ShiftRight") ? SPRINT : WALK;
       const next = { x: pos.x + dir.x * speed * dt, z: pos.z + dir.z * speed * dt };
       resolveCircle(next, this.mounted ? 0.9 : PLAYER_R, this.world.colliders, this.mounted);
-      pos.x = Math.max(-BOUNDS, Math.min(BOUNDS, next.x));
-      pos.z = Math.max(-BOUNDS, Math.min(BOUNDS, next.z));
-      this.player.rotation.y = Math.atan2(dir.x, dir.z);
+      const nx = Math.max(-BOUNDS, Math.min(BOUNDS, next.x));
+      const nz = Math.max(-BOUNDS, Math.min(BOUNDS, next.z));
+      this.playerSpeed = Math.hypot(nx - pos.x, nz - pos.z) / dt;
+      pos.x = nx;
+      pos.z = nz;
+      this.player.rotation.y = turnToward(this.player.rotation.y, Math.atan2(dir.x, dir.z), dt * 12);
     }
     this.syncHorse();
   }
 
   private syncHorse(): void {
     const pos = this.player.position;
+    const ground = heightAt(pos.x, pos.z);
     if (this.mounted) {
-      const h = this.world.horse;
-      h.position.x = pos.x;
-      h.position.z = pos.z;
+      const h = this.world.horse.root;
+      h.position.set(pos.x, ground, pos.z);
       h.rotation.y = this.player.rotation.y;
-      pos.y = 2.2;
+      pos.y = ground + 0.95;
     } else {
-      pos.y = 0.9;
+      pos.y = ground;
+    }
+  }
+
+  private animateRigs(dt: number, paused: boolean): void {
+    const w = this.world;
+    this.playerRig.animate(dt, this.mounted ? 0 : this.playerSpeed);
+    w.horse.animate(dt, this.mounted ? this.playerSpeed : 0);
+    if (paused) w.watchman.animate(dt, 0);
+    const pp = this.player.position;
+    for (const npc of [w.miriam, w.eli, w.tobias]) {
+      const r = npc.root;
+      if (distXZ(r.position, pp) < 7) {
+        r.rotation.y = turnToward(r.rotation.y, Math.atan2(pp.x - r.position.x, pp.z - r.position.z), dt * 4);
+      }
+      npc.animate(dt, 0);
     }
   }
 
@@ -243,7 +306,8 @@ export class Game {
   }
 
   private updateWatchman(dt: number): void {
-    const w = this.world.watchman.position;
+    const rig = this.world.watchman;
+    const w = rig.root.position;
     const pp = this.player.position;
     const w8 = this.watch;
     const dPlayer = distXZ(w, pp);
@@ -273,13 +337,19 @@ export class Game {
     const dx = target.x - w.x;
     const dz = target.z - w.z;
     const d = Math.hypot(dx, dz);
+    let moved = 0;
     if (d > 0.01) {
       const step = Math.min(d, speed * dt);
+      const ox = w.x;
+      const oz = w.z;
       w.x += (dx / d) * step;
       w.z += (dz / d) * step;
       resolveCircle(w, 0.5, this.world.colliders, false);
-      this.world.watchman.rotation.y = Math.atan2(dx, dz);
+      w.y = heightAt(w.x, w.z);
+      moved = Math.hypot(w.x - ox, w.z - oz) / dt;
+      rig.root.rotation.y = turnToward(rig.root.rotation.y, Math.atan2(dx, dz), dt * 8);
     }
+    rig.animate(dt, moved);
 
     if (w8.chasing && dPlayer < 1.5) {
       const nx = (pp.x - w.x) / (dPlayer || 1);
@@ -328,7 +398,7 @@ export class Game {
     if (paused) return this.hud.setPrompt(null);
     const near = this.nearestInteraction();
     if (near) return this.hud.setPrompt(`E — ${near.label}`);
-    if (!this.mounted && distXZ(this.player.position, this.world.horse.position) < 3.5) {
+    if (!this.mounted && distXZ(this.player.position, this.world.horse.root.position) < 3.5) {
       return this.hud.setPrompt(
         this.state.hasHorse ? "H — Ride Dinah" : "Eli's mare, Dinah. Ask Eli in the pasture about her.",
       );
@@ -367,10 +437,16 @@ export class Game {
   private interactions(): Interaction[] {
     const s = this.state;
     const w = this.world;
+    const npc = (label: string, rig: Rig, act: () => void): Interaction => ({
+      label,
+      x: rig.root.position.x,
+      z: rig.root.position.z,
+      act,
+    });
     const list: Interaction[] = [
-      { label: "Talk to Miriam", x: w.miriam.position.x, z: w.miriam.position.z, act: () => this.talkMiriam() },
-      { label: "Talk to Eli", x: w.eli.position.x, z: w.eli.position.z, act: () => this.talkEli() },
-      { label: "Talk to Tobias", x: w.tobias.position.x, z: w.tobias.position.z, act: () => this.talkTobias() },
+      npc("Talk to Miriam", w.miriam, () => this.talkMiriam()),
+      npc("Talk to Eli", w.eli, () => this.talkEli()),
+      npc("Talk to Tobias", w.tobias, () => this.talkTobias()),
     ];
     if (!s.doorOpen) {
       list.push({
@@ -426,17 +502,21 @@ export class Game {
     const pos = this.player.position;
     if (this.mounted) {
       this.mounted = false;
-      this.world.horse.position.x = pos.x + 1.6;
+      this.playerRig.setSeated(false);
+      const side = this.player.rotation.y + Math.PI / 2;
+      this.placeHorse(pos.x + Math.sin(side) * 1.6, pos.z + Math.cos(side) * 1.6);
       this.syncHorse();
       this.hud.toast("You climb down from Dinah.");
       return;
     }
-    if (distXZ(pos, this.world.horse.position) > 3.5) return;
+    if (distXZ(pos, this.world.horse.root.position) > 3.5) return;
     if (!this.state.hasHorse) {
       this.hud.toast("Dinah belongs to Eli. Ask him first.");
       return;
     }
     this.mounted = true;
+    this.playerRig.setSeated(true);
+    this.player.rotation.y = this.world.horse.root.rotation.y;
     this.syncHorse();
     this.hud.toast("Riding Dinah. She won't go through doorways. Press H to climb down.");
   }
@@ -533,7 +613,7 @@ export class Game {
         "I've put a light on your compass. It points to Tobias.",
       ];
       text = lines[rung];
-      if (rung === 2) this.setCompass(this.world.tobias.position.x, this.world.tobias.position.z);
+      if (rung === 2) this.setCompass(this.world.tobias.root.position.x, this.world.tobias.root.position.z);
     } else if (rung === 0) {
       text = `There is light ${compassWord(pp, p)} of here, toward the ${p.area}.`;
     } else if (rung === 1) {
@@ -657,12 +737,14 @@ export class Game {
 
   private applyHope(): void {
     const h = this.collected.size / CHAPTER_SIZE;
-    const c = Color3.Lerp(new Color3(0.23, 0.21, 0.24), new Color3(0.58, 0.74, 0.92), h);
-    this.scene.clearColor = new Color4(c.r, c.g, c.b, 1);
-    this.scene.fogColor = c;
-    this.scene.fogDensity = 0.016 - 0.011 * h;
-    this.hemi.intensity = 0.45 + 0.5 * h;
-    this.sun.intensity = 0.4 + 0.8 * h;
+    const horizon = Color3.Lerp(new Color3(0.33, 0.29, 0.29), new Color3(0.8, 0.84, 0.88), h);
+    const top = Color3.Lerp(new Color3(0.14, 0.13, 0.17), new Color3(0.28, 0.48, 0.82), h);
+    this.sky.paint(top, horizon);
+    this.scene.clearColor = new Color4(horizon.r, horizon.g, horizon.b, 1);
+    this.scene.fogColor = horizon;
+    this.scene.fogDensity = 0.012 - 0.0085 * h;
+    this.hemi.intensity = 0.4 + 0.35 * h;
+    this.sun.intensity = 0.55 + 0.9 * h;
   }
 
   private persist(): void {
@@ -670,8 +752,8 @@ export class Game {
     const s = this.state;
     s.px = this.player.position.x;
     s.pz = this.player.position.z;
-    s.horseX = this.world.horse.position.x;
-    s.horseZ = this.world.horse.position.z;
+    s.horseX = this.world.horse.root.position.x;
+    s.horseZ = this.world.horse.root.position.z;
     saveState(s);
   }
 
