@@ -1,5 +1,6 @@
-import { Mesh, MeshBuilder, Scene, StandardMaterial, VertexBuffer, VertexData } from "@babylonjs/core";
+import { Mesh, MeshBuilder, Scene, VertexBuffer, VertexData } from "@babylonjs/core";
 import { PLACEMENTS } from "../data/layout";
+import { hillHeight, paintGround } from "./surface";
 
 /** [x, z, radius] areas kept perfectly flat at height 0 so sites and verses sit on level ground. */
 const FLAT_ZONES: ReadonlyArray<readonly [number, number, number]> = [
@@ -27,7 +28,7 @@ export function heightAt(x: number, z: number): number {
     3.2 * Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.04 - 0.7) +
     1.8 * Math.sin(x * 0.11 + z * 0.07) +
     1.1 * Math.cos(x * 0.16 - z * 0.13 + 2);
-  let h = Math.max(0, raw + 1.2) + smooth(115, 170, Math.hypot(x, z)) * 18;
+  let h = Math.max(0, raw + 1.2) + smooth(115, 170, Math.hypot(x, z)) * 18 + hillHeight(x, z);
   let mask = 0;
   for (const [zx, zz, r] of FLAT_ZONES) {
     const d = Math.hypot(x - zx, z - zz);
@@ -40,7 +41,8 @@ export function heightAt(x: number, z: number): number {
   return h;
 }
 
-export function createTerrain(scene: Scene, mat: StandardMaterial): Mesh {
+export function createTerrain(scene: Scene): Mesh {
+  const mat = paintGround(scene, heightAt);
   const ground = MeshBuilder.CreateGround(
     "ground",
     { width: 360, height: 360, subdivisions: 180, updatable: true },

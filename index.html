@@ -27,10 +27,21 @@
         <div class="close-hint"></div>
       </div>
       <div id="codex" class="hidden"></div>
-      <div id="help">WASD move &middot; Shift sprint &middot; Drag mouse to look &middot; Wheel zoom &middot; E interact &middot; H ride &middot; C Codex</div>
+      <div id="help">WASD move &middot; Shift sprint &middot; Ctrl + WASD look &middot; Drag mouse to look &middot; Wheel zoom &middot; E interact &middot; H ride &middot; C Codex &middot; M map</div>
     </div>
 
     <div id="title">
+      <div class="title-layout">
+      <figure id="level-map">
+        <img src="/maps/genesis-1.jpg" alt="Parchment map of the Genesis 1 valley, from the Mediterranean to the Jordan" />
+        <div id="level-pin" class="hidden">
+          <span class="pin-dot"></span>
+          <span class="pin-card">
+            <b id="pin-name">Genesis 1</b>
+            <span id="pin-place">West of the Jordan</span>
+          </span>
+        </div>
+      </figure>
       <div class="title-inner">
         <h1>Lumen Scriptura</h1>
         <p class="sub">Phase 0 &middot; The First Day &middot; Genesis 1</p>
@@ -43,6 +54,31 @@
           Most people here will help you. A few will not. There is always another way in.
         </p>
         <button id="begin">Begin</button>
+      </div>
+      </div>
+    </div>
+
+    <div id="travel" class="hidden">
+      <div class="title-layout">
+        <figure id="travel-map">
+          <img src="/maps/genesis-1.jpg" alt="The valley, and the road that leaves it to the south" />
+          <div id="travel-here" class="map-pin">
+            <span class="pin-dot"></span>
+            <span class="pin-card"><b>The valley</b></span>
+          </div>
+          <div id="travel-there" class="map-pin">
+            <span class="pin-dot"></span>
+            <span class="pin-card"><b>South road camp</b></span>
+          </div>
+        </figure>
+        <div class="title-inner">
+          <h2 id="travel-title">The south road</h2>
+          <p id="travel-copy"></p>
+          <p class="travel-actions">
+            <button id="travel-go" type="button">Take the road</button>
+            <button id="travel-stay" type="button">Stay</button>
+          </p>
+        </div>
       </div>
     </div>
 

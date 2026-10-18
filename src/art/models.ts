@@ -214,3 +214,109 @@ export function buildHorse(scene: Scene, pal: Palette): Rig {
     setSeated() {},
   };
 }
+
+export type BeastKind = "sheep" | "camel" | "calf" | "dog" | "cat";
+
+/** A small walked animal. Names start with `beast` so they stay out of the shadow map. */
+export function buildBeast(scene: Scene, pal: Palette, name: string, kind: BeastKind): Rig {
+  const root = new Mesh(name, scene);
+  const meshes: Mesh[] = [];
+  const spec = {
+    sheep: { coat: [0.9, 0.88, 0.82] as RGB, dark: [0.2, 0.16, 0.14] as RGB, y: 0.72, len: 0.9, rad: 0.38, leg: 0.42, neck: 0.15, wool: true },
+    camel: { coat: [0.72, 0.55, 0.32] as RGB, dark: [0.45, 0.3, 0.16] as RGB, y: 1.45, len: 1.5, rad: 0.32, leg: 1.05, neck: 0.85, wool: false },
+    calf: { coat: [0.55, 0.32, 0.18] as RGB, dark: [0.92, 0.9, 0.84] as RGB, y: 0.85, len: 1.15, rad: 0.32, leg: 0.58, neck: 0.28, wool: false },
+    dog: { coat: [0.45, 0.3, 0.16] as RGB, dark: [0.28, 0.18, 0.1] as RGB, y: 0.42, len: 0.7, rad: 0.16, leg: 0.28, neck: 0.16, wool: false },
+    cat: { coat: [0.72, 0.5, 0.28] as RGB, dark: [0.35, 0.22, 0.12] as RGB, y: 0.26, len: 0.46, rad: 0.1, leg: 0.16, neck: 0.08, wool: false },
+  }[kind];
+  const coat = pal.mat(`${kind}-coat`, spec.coat, kind === "sheep" ? "cloth" : "grain");
+  const dark = pal.mat(`${kind}-dark`, spec.dark);
+  const part = (m: Mesh, parent: TransformNode | Mesh, material: StandardMaterial, x = 0, y = 0, z = 0) => {
+    m.parent = parent;
+    m.material = material;
+    m.position.set(x, y, z);
+    meshes.push(m);
+    return m;
+  };
+
+  const body = part(MeshBuilder.CreateCapsule(`${name}-body`, { radius: spec.rad, height: spec.len, tessellation: 10 }, scene), root, coat, 0, spec.y, 0);
+  body.rotation.x = Math.PI / 2;
+  if (spec.wool) body.scaling.set(1.15, 1, 1);
+  if (kind === "camel") {
+    part(MeshBuilder.CreateSphere(`${name}-hump`, { diameter: 0.55, segments: 8 }, scene), root, coat, 0, spec.y + 0.38, 0.05);
+  }
+  if (kind === "calf") {
+    const patch = part(MeshBuilder.CreateSphere(`${name}-patch`, { diameter: 0.28, segments: 6 }, scene), root, dark, 0.12, spec.y + 0.12, 0.1);
+    patch.scaling.set(1.4, 0.7, 0.8);
+  }
+
+  const neck = new TransformNode(`${name}-neck`, scene);
+  neck.parent = root;
+  neck.position.set(0, spec.y + spec.rad * 0.2, spec.len * 0.42);
+  neck.rotation.x = kind === "camel" ? 0.9 : 0.5;
+  part(MeshBuilder.CreateCylinder(`${name}-neck`, { height: spec.neck, diameterTop: spec.rad * 0.45, diameterBottom: spec.rad * 0.7, tessellation: 8 }, scene), neck, coat, 0, spec.neck * 0.45, 0);
+  const head = part(
+    MeshBuilder.CreateBox(`${name}-head`, { width: spec.rad * 0.8, height: spec.rad * 0.7, depth: spec.rad * 1.3 }, scene),
+    neck,
+    kind === "sheep" ? dark : coat,
+    0,
+    spec.neck * 0.85,
+    spec.rad * 0.7,
+  );
+  if (kind === "sheep") head.scaling.set(1, 1, 1.1);
+  part(MeshBuilder.CreateBox(`${name}-snout`, { width: spec.rad * 0.5, height: spec.rad * 0.4, depth: spec.rad * 0.45 }, scene), neck, dark, 0, spec.neck * 0.75, spec.rad * 1.35);
+
+  const earH = kind === "cat" || kind === "dog" ? spec.rad * 0.7 : spec.rad * 0.35;
+  for (const side of [-1, 1]) {
+    const ear = part(
+      MeshBuilder.CreateCylinder(`${name}-ear`, { height: earH, diameterTop: 0, diameterBottom: spec.rad * 0.28, tessellation: 5 }, scene),
+      neck,
+      kind === "sheep" ? dark : coat,
+      side * spec.rad * 0.35,
+      spec.neck * 0.95 + earH * 0.3,
+      spec.rad * 0.3,
+    );
+    if (kind === "dog") ear.rotation.z = side * 0.8;
+    if (kind === "cat") ear.rotation.z = side * 0.15;
+  }
+
+  const tail = new TransformNode(`${name}-tail`, scene);
+  tail.parent = root;
+  tail.position.set(0, spec.y + spec.rad * 0.3, -spec.len * 0.48);
+  tail.rotation.x = kind === "cat" ? 1.4 : kind === "dog" ? -0.8 : -2.2;
+  part(MeshBuilder.CreateCylinder(`${name}-tail`, { height: spec.len * 0.45, diameterTop: spec.rad * 0.2, diameterBottom: spec.rad * 0.08, tessellation: 6 }, scene), tail, kind === "cat" ? dark : coat, 0, spec.len * 0.2, 0);
+
+  const legs = (
+    [
+      [-1, 1],
+      [1, 1],
+      [-1, -1],
+      [1, -1],
+    ] as const
+  ).map(([sx, sz]) => {
+    const hip = new TransformNode(`${name}-hip`, scene);
+    hip.parent = root;
+    hip.position.set(sx * spec.rad * 0.55, spec.y - spec.rad * 0.3, sz * spec.len * 0.32);
+    part(MeshBuilder.CreateCylinder(`${name}-leg`, { height: spec.leg, diameterTop: spec.rad * 0.28, diameterBottom: spec.rad * 0.16, tessellation: 6 }, scene), hip, kind === "sheep" ? dark : coat, 0, -spec.leg * 0.5, 0);
+    return hip;
+  });
+
+  let phase = Math.random() * 6;
+  let amp = 0;
+  return {
+    root,
+    meshes,
+    animate(dt, speed) {
+      phase += dt * (kind === "cat" || kind === "dog" ? 6 : 3) * (0.4 + speed * 0.15);
+      amp += (Math.min(0.7, speed * (kind === "camel" ? 0.04 : 0.12)) - amp) * Math.min(1, dt * 6);
+      const s = Math.sin(phase) * amp;
+      legs[0].rotation.x = s;
+      legs[3].rotation.x = s;
+      legs[1].rotation.x = -s;
+      legs[2].rotation.x = -s;
+      tail.rotation.z = Math.sin(phase * 0.7) * (kind === "dog" ? 0.5 : 0.25);
+      if (kind === "cat") tail.rotation.x = 1.2 + Math.sin(phase * 0.4) * 0.2;
+      body.position.y = spec.y + Math.abs(Math.sin(phase)) * amp * spec.rad * 0.15;
+    },
+    setSeated() {},
+  };
+}

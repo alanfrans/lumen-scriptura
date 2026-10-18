@@ -1,22 +1,41 @@
 import { Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
 import type { Palette } from "../art/materials";
-import { buildHorse, buildPerson, type Rig } from "../art/models";
+import { buildBeast, buildHorse, buildPerson, type BeastKind, type PersonLook, type Rig } from "../art/models";
 import { PLACEMENTS } from "../data/layout";
 import type { Box } from "./collision";
+import { onRoad } from "./surface";
 import { createTerrain, heightAt } from "./terrain";
+
+export interface Wanderer {
+  rig: Rig;
+  ax: number;
+  az: number;
+  bx: number;
+  bz: number;
+  phase: number;
+  rate: number;
+}
 
 export interface World {
   colliders: Box[];
   ground: Mesh;
-  door: Mesh;
-  doorBox: Box;
-  key: Mesh;
-  jar: Mesh;
-  horse: Rig;
-  miriam: Rig;
-  eli: Rig;
-  tobias: Rig;
-  watchman: Rig;
+  door: Mesh | null;
+  doorBox: Box | null;
+  key: Mesh | null;
+  jar: Mesh | null;
+  horse: Rig | null;
+  miriam: Rig | null;
+  eli: Rig | null;
+  tobias: Rig | null;
+  watchman: Rig | null;
+  /** Ground height for this district. The valley's hills, or flat camp ground. */
+  heightAt: (x: number, z: number) => number;
+  /** People and animals that stand and look around. */
+  folk: Rig[];
+  /** People and animals that pace between two points. */
+  wanderers: Wanderer[];
+  /** Merged scenery and the oasis water. Disposed with the place. */
+  scenery: Mesh[];
 }
 
 export const CHAPEL = { minX: 52, maxX: 68, minZ: 48, maxZ: 72 };
@@ -104,7 +123,6 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     return j;
   };
 
-  const sand = pal.mat("sand", [0.82, 0.7, 0.52], "sand", 40);
   const stone = pal.mat("stone", [0.68, 0.62, 0.53], "grain", 2);
   const ashlar = pal.mat("ashlar", [0.74, 0.67, 0.57], "ashlar");
   const lowWall = pal.mat("low-wall", [0.62, 0.57, 0.5], "ashlar");
@@ -129,7 +147,7 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   const tableCloth = pal.mat("table-cloth", [0.75, 0.62, 0.32], "cloth");
   const spark = pal.glow("spark", [0.75, 0.9, 1]);
 
-  const ground = createTerrain(scene, sand);
+  const ground = createTerrain(scene);
 
   // Camp (start). Miriam keeps it.
   for (let i = 0; i < 9; i++) {
@@ -340,6 +358,12 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     }
   }
   for (const x of [-12, 32]) for (const h of [0.5, 0.95]) box(x, h, 77, 0.06, 0.07, 50, wood);
+  // Rails are thinner than one step, so the blockers are thicker than the wood.
+  solidBox(-3, 52, 18, 0.6);
+  solidBox(23, 52, 18, 0.6);
+  solidBox(10, 102, 44, 0.6);
+  solidBox(-12, 77, 0.6, 50);
+  solidBox(32, 77, 0.6, 50);
   box(18, 0.35, 70, 2.5, 0.5, 0.7, wood, true);
   box(18, 0.58, 70, 2.3, 0.06, 0.5, pal.mat("trough-water", [0.15, 0.3, 0.38]));
   for (let i = 0; i < 9; i++) {
@@ -498,8 +522,17 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     if (!clear(x, z, 22)) continue;
     const s = 0.4 + rand() * 1.6;
     const rock = ball(x, gy(x, z) + s * 0.15, z, 1, rand() < 0.5 ? stone : darkStone, 5);
-    rock.scaling.set(s * (1 + rand()), s * 0.6, s);
-    rock.rotation.y = rand() * Math.PI;
+    const sx = s * (1 + rand());
+    const sy = s * 0.6;
+    const sz = s;
+    rock.scaling.set(sx, sy, sz);
+    const yaw = rand() * Math.PI;
+    rock.rotation.y = yaw;
+    if (sy > 0.4) {
+      const c = Math.abs(Math.cos(yaw));
+      const sn = Math.abs(Math.sin(yaw));
+      solidBox(x, z, sx * c + sz * sn, sx * sn + sz * c);
+    }
   }
   for (let i = 0; i < 220; i++) {
     const x = (rand() - 0.5) * 290;
@@ -518,6 +551,48 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     }
   }
 
+  const roll = rng(77);
+  const tree = (x: number, z: number, kind: "broad" | "cypress" | "acacia") => {
+    if (onRoad(x, z, 0.8) || Math.hypot(x, z) > 155) return;
+    const y = gy(x, z);
+    if (kind === "cypress") {
+      cyl(x, y + 3.2, z, 6.4, 0.12, 1.45, cypress, 8);
+      cyl(x, y + 0.35, z, 0.7, 0.2, 0.22, darkWood, 6);
+    } else if (kind === "acacia") {
+      cyl(x, y + 1.35, z, 2.7, 0.1, 0.28, darkWood, 6);
+      const canopy = ball(x, y + 2.85, z, 3.1, palmLeaf, 8);
+      canopy.scaling.set(1.45, 0.32, 1.45);
+    } else {
+      cyl(x, y + 1.15, z, 2.3, 0.18, 0.34, darkWood, 7);
+      ball(x, y + 2.55, z, 2.1, cypress, 8);
+      ball(x + 0.75, y + 2.2, z + 0.25, 1.45, palmLeaf, 7);
+      ball(x - 0.55, y + 2.25, z - 0.35, 1.3, shrub, 7);
+    }
+    solidBox(x, z, 0.75, 0.75);
+  };
+  for (const [gx, gz, kind] of [
+    [-108, 22, "broad"],
+    [108, -18, "acacia"],
+    [-16, -112, "acacia"],
+    [116, 98, "cypress"],
+    [-90, -78, "broad"],
+    [40, 110, "broad"],
+  ] as const) {
+    for (let i = 0; i < 5; i++) {
+      const a = roll() * Math.PI * 2;
+      const r = 2.5 + roll() * 8;
+      const x = gx + Math.cos(a) * r;
+      const z = gz + Math.sin(a) * r;
+      if (clear(x, z, 14)) tree(x, z, kind);
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    const x = (roll() - 0.5) * 270;
+    const z = (roll() - 0.5) * 270;
+    if (!clear(x, z, 14)) continue;
+    tree(x, z, roll() < 0.33 ? "cypress" : roll() < 0.6 ? "acacia" : "broad");
+  }
+
   // Merge static scenery per material: thousands of parts become a few dozen draw calls.
   const groups = new Map<StandardMaterial, Mesh[]>();
   for (const m of statics) {
@@ -526,10 +601,117 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     list.push(m);
     groups.set(k, list);
   }
+  const scenery: Mesh[] = [water];
   for (const list of groups.values()) {
     const merged = list.length > 1 ? Mesh.MergeMeshes(list, true, true) : list[0];
     merged?.freezeWorldMatrix();
+    if (merged) scenery.push(merged);
   }
 
-  return { colliders, ground, door, doorBox, key, jar, horse, miriam, eli, tobias, watchman };
+  const folk: Rig[] = [];
+  const wanderers: Wanderer[] = [];
+  const stand = (look: PersonLook, x: number, z: number, face = 0) => {
+    const rig = buildPerson(scene, pal, `folk-${folk.length}`, look);
+    rig.root.position.set(x, gy(x, z), z);
+    rig.root.rotation.y = face;
+    folk.push(rig);
+    return rig;
+  };
+  const pacePerson = (look: PersonLook, ax: number, az: number, bx: number, bz: number, rate: number) => {
+    const rig = buildPerson(scene, pal, `folk-w-${wanderers.length}`, look);
+    rig.root.position.set(ax, gy(ax, az), az);
+    wanderers.push({ rig, ax, az, bx, bz, phase: roll() * 6, rate });
+  };
+  const paceBeast = (kind: BeastKind, ax: number, az: number, bx: number, bz: number, rate: number) => {
+    const rig = buildBeast(scene, pal, `beast-${kind}-${wanderers.length}`, kind);
+    rig.root.position.set(ax, gy(ax, az), az);
+    wanderers.push({ rig, ax, az, bx, bz, phase: roll() * 6, rate });
+  };
+  const sitBeast = (kind: BeastKind, x: number, z: number, face = 0) => {
+    const rig = buildBeast(scene, pal, `beast-${kind}-${folk.length}`, kind);
+    rig.root.position.set(x, gy(x, z), z);
+    rig.root.rotation.y = face;
+    folk.push(rig);
+  };
+
+  const traveler = (robe: [number, number, number], trim: [number, number, number], head: [number, number, number]): PersonLook => ({
+    robe,
+    trim,
+    head,
+    headwear: "wrap",
+  });
+  stand(traveler([0.62, 0.28, 0.2], [0.85, 0.7, 0.4], [0.55, 0.2, 0.16]), 6, -52, Math.PI);
+  stand({ robe: [0.25, 0.32, 0.48], trim: [0.75, 0.62, 0.3], head: [0.2, 0.28, 0.45], headwear: "turban", beard: [0.15, 0.12, 0.1], satchel: true }, -5, -48, 0.4);
+  stand({ robe: [0.72, 0.62, 0.42], trim: [0.4, 0.22, 0.16], head: [0.55, 0.4, 0.28], headwear: "hood" }, 48, -64, -1.2);
+  stand(traveler([0.35, 0.45, 0.3], [0.6, 0.5, 0.28], [0.28, 0.38, 0.22]), -48, 48, 1);
+  stand({ robe: [0.5, 0.22, 0.28], trim: [0.85, 0.75, 0.55], head: [0.4, 0.15, 0.18], headwear: "wrap", beard: [0.25, 0.18, 0.12] }, 52, 42, Math.PI);
+  stand(traveler([0.42, 0.36, 0.28], [0.3, 0.22, 0.16], [0.55, 0.42, 0.3]), 16, 48, Math.PI);
+  stand({ robe: [0.2, 0.22, 0.28], trim: [0.7, 0.55, 0.25], head: [0.15, 0.16, 0.22], headwear: "turban", satchel: true }, 78, 8, 2.4);
+  stand(traveler([0.58, 0.4, 0.22], [0.35, 0.18, 0.12], [0.7, 0.55, 0.35]), -70, 48, -0.6);
+
+  pacePerson(traveler([0.48, 0.3, 0.22], [0.8, 0.65, 0.35], [0.4, 0.24, 0.18]), 2, -46, 2, -34, 0.35);
+  pacePerson({ robe: [0.3, 0.38, 0.42], trim: [0.7, 0.6, 0.4], head: [0.22, 0.3, 0.36], headwear: "hood", staff: true }, -70, 46, -46, 46, 0.28);
+  pacePerson(traveler([0.55, 0.25, 0.22], [0.85, 0.72, 0.45], [0.4, 0.18, 0.16]), 8, 46, 22, 46, 0.4);
+  pacePerson({ robe: [0.4, 0.32, 0.5], trim: [0.75, 0.6, 0.3], head: [0.28, 0.2, 0.38], headwear: "turban", beard: [0.2, 0.14, 0.1] }, 36, -62, 36, -78, 0.32);
+  pacePerson(traveler([0.65, 0.5, 0.32], [0.35, 0.22, 0.14], [0.5, 0.32, 0.2]), 48, -12, 62, -12, 0.3);
+  pacePerson({ robe: [0.22, 0.28, 0.22], trim: [0.6, 0.48, 0.28], head: [0.18, 0.26, 0.18], headwear: "wrap", satchel: true }, 24, 18, 40, 28, 0.26);
+
+  paceBeast("sheep", -4, 66, 8, 78, 0.35);
+  paceBeast("sheep", 6, 70, 20, 86, 0.3);
+  paceBeast("sheep", 12, 64, 22, 74, 0.38);
+  paceBeast("sheep", 0, 84, 16, 92, 0.28);
+  paceBeast("camel", -8, -16, 24, -8, 0.22);
+  paceBeast("camel", -40, 28, -16, 12, 0.2);
+  paceBeast("camel", 20, 8, 48, 16, 0.18);
+  paceBeast("calf", 2, 62, 14, 70, 0.32);
+  paceBeast("calf", 18, 80, 26, 90, 0.3);
+  paceBeast("calf", -2, 74, 10, 88, 0.34);
+  paceBeast("calf", -30, 8, -14, 4, 0.26);
+  paceBeast("dog", 4, -56, -6, -50, 0.7);
+  paceBeast("dog", 14, 58, 22, 66, 0.55);
+  paceBeast("dog", -52, 52, -40, 44, 0.6);
+  sitBeast("cat", 3.2, -57, 1.2);
+  sitBeast("cat", 32, 30, Math.PI);
+  sitBeast("cat", -58, 52, 0.5);
+  sitBeast("dog", 8, 62, 2);
+
+  return {
+    colliders,
+    ground,
+    door,
+    doorBox,
+    key,
+    jar,
+    horse,
+    miriam,
+    eli,
+    tobias,
+    watchman,
+    folk,
+    wanderers,
+    scenery,
+    heightAt,
+  };
+}
+
+/** Drop a district without touching the player, sky, or shared materials. */
+export function disposeWorld(world: World): void {
+  const rigs = [
+    world.horse,
+    world.miriam,
+    world.eli,
+    world.tobias,
+    world.watchman,
+    ...world.folk,
+    ...world.wanderers.map((w) => w.rig),
+  ];
+  for (const rig of rigs) {
+    if (rig && !rig.root.isDisposed()) rig.root.dispose(false, false);
+  }
+  for (const mesh of [world.door, world.key, world.jar, world.ground, ...world.scenery]) {
+    if (!mesh || mesh.isDisposed()) continue;
+    const ownMaterial = mesh === world.ground || mesh.name === "water";
+    mesh.dispose(false, ownMaterial);
+  }
+  world.colliders.length = 0;
 }
