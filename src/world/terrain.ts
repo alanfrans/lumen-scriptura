@@ -17,13 +17,17 @@ const FLAT_ZONES: ReadonlyArray<readonly [number, number, number]> = [
 ];
 
 const OASIS = { x: -60, z: 60 };
+/** Matches the ground mesh: 360 m across, one vertex every 2 m. */
+const GROUND_STEPS = 180;
+const GROUND_STEP = 360 / GROUND_STEPS;
+const GROUND_ORIGIN = -180;
 
 const smooth = (a: number, b: number, x: number) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
 };
 
-export function heightAt(x: number, z: number): number {
+function rawHeight(x: number, z: number): number {
   const raw =
     3.2 * Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.04 - 0.7) +
     1.8 * Math.sin(x * 0.11 + z * 0.07) +
@@ -39,6 +43,24 @@ export function heightAt(x: number, z: number): number {
   const od = Math.hypot(x - OASIS.x, z - OASIS.z);
   if (od < 18) h = Math.min(h, -0.7 * (1 - smooth(12, 18, od)));
   return h;
+}
+
+/** Height of the drawn ground. The mesh is flat between vertices, so standing on the raw curve sinks into those faces. */
+export function heightAt(x: number, z: number): number {
+  const gx = (x - GROUND_ORIGIN) / GROUND_STEP;
+  const gz = (z - GROUND_ORIGIN) / GROUND_STEP;
+  const x0 = Math.max(0, Math.min(GROUND_STEPS - 1, Math.floor(gx)));
+  const z0 = Math.max(0, Math.min(GROUND_STEPS - 1, Math.floor(gz)));
+  const x1 = Math.min(GROUND_STEPS, x0 + 1);
+  const z1 = Math.min(GROUND_STEPS, z0 + 1);
+  const tx = Math.min(1, Math.max(0, gx - x0));
+  const tz = Math.min(1, Math.max(0, gz - z0));
+  const at = (ix: number, iz: number) => rawHeight(GROUND_ORIGIN + ix * GROUND_STEP, GROUND_ORIGIN + iz * GROUND_STEP);
+  const h00 = at(x0, z0);
+  const h10 = at(x1, z0);
+  const h01 = at(x0, z1);
+  const h11 = at(x1, z1);
+  return (h00 * (1 - tx) + h10 * tx) * (1 - tz) + (h01 * (1 - tx) + h11 * tx) * tz;
 }
 
 export function createTerrain(scene: Scene): Mesh {

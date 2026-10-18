@@ -21,7 +21,7 @@ const smooth = (a: number, b: number, x: number) => {
 const hex = (c: Color3) => c.toHexString();
 
 /**
- * A full day, about three and a half minutes. 0 and 1 are midnight,
+ * A full day is twenty minutes. 0 and 1 are midnight,
  * 0.25 is sunrise, 0.5 is noon, 0.75 is sunset.
  */
 export class Sky {

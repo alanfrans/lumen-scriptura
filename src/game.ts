@@ -53,6 +53,9 @@ const RIDE = 17;
 const STIPEND_AMOUNT = 20;
 const VERSE_PRICE = 30;
 const INTERACT_RANGE = 3.2;
+/** One full day and night. Night is about half of this. */
+const DAY_LENGTH = 20 * 60;
+const EYE_HEIGHT = 1.62;
 
 interface Interaction {
   label: string;
@@ -141,18 +144,20 @@ export class Game {
     this.player.position.set(this.state.px, heightAt(this.state.px, this.state.pz), this.state.pz);
     const anchor = new Mesh("camera-anchor", this.scene);
     anchor.parent = this.player;
-    anchor.position.y = 1.6;
+    anchor.position.y = EYE_HEIGHT;
+    for (const mesh of this.playerRig.meshes) mesh.isVisible = false;
 
-    this.camera = new ArcRotateCamera("cam", -Math.PI / 2, 1.12, 16, this.player.position.clone(), this.scene);
+    this.camera = new ArcRotateCamera("cam", -Math.PI / 2, Math.PI / 2, 0.04, anchor.position.clone(), this.scene);
     this.camera.lockedTarget = anchor;
     this.camera.attachControl(canvas, true);
     this.camera.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
-    this.camera.lowerRadiusLimit = 6;
-    this.camera.upperRadiusLimit = 45;
-    this.camera.lowerBetaLimit = 0.35;
-    this.camera.upperBetaLimit = 1.48;
-    this.camera.wheelDeltaPercentage = 0.01;
-    this.camera.minZ = 0.1;
+    this.camera.inputs.removeByType("ArcRotateCameraMouseWheelInput");
+    this.camera.lowerRadiusLimit = 0.04;
+    this.camera.upperRadiusLimit = 0.04;
+    this.camera.lowerBetaLimit = 0.2;
+    this.camera.upperBetaLimit = 2.4;
+    this.camera.inertia = 0;
+    this.camera.minZ = 0.05;
     this.camera.maxZ = 1200;
 
     this.goToPlace(this.state.place);
@@ -164,7 +169,7 @@ export class Game {
       if (this.started) this.update(dt);
       else {
         this.time += dt;
-        this.day = (this.day + dt / 210) % 1;
+        this.day = (this.day + dt / DAY_LENGTH) % 1;
         this.paintSky();
         this.lights.update(this.time, dt, []);
       }
@@ -321,7 +326,8 @@ export class Game {
 
   private update(dt: number): void {
     this.time += dt;
-    this.day = (this.day + dt / 210) % 1;
+    this.day = (this.day + dt / DAY_LENGTH) % 1;
+    this.keepEyesAboveGround();
     this.paintSky();
     this.lights.update(this.time, dt, this.peopleNearVerses(), this.shutVerses());
     const paused = this.hud.dialogOpen || this.hud.codexOpen || this.travelOpen;
@@ -340,6 +346,13 @@ export class Game {
     this.updateStatus();
     this.saveClock += dt;
     if (this.saveClock > 5) this.persist();
+  }
+
+  /** The near plane must stay above the ground when the view tilts down a slope. */
+  private keepEyesAboveGround(): void {
+    const eye = this.camera.position;
+    const floor = this.world.heightAt(eye.x, eye.z) + 0.4;
+    if (eye.y < floor) eye.y = floor;
   }
 
   private forward(): Vector3 {
