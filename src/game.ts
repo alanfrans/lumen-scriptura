@@ -111,6 +111,9 @@ export class Game {
   /** Wrong line or full arms: don't reopen the verse the same step. */
   private wordsQuiet = 0;
   private guideSpeed = 0;
+  /** Far camera. The eyes are the view until V is pressed. */
+  private thirdPerson = false;
+  private viewRadius = 8;
   private travelOpen = false;
   private travelDest = "";
   private compass: (XZ & { until: number }) | null = null;
@@ -159,6 +162,15 @@ export class Game {
     this.camera.inertia = 0;
     this.camera.minZ = 0.05;
     this.camera.maxZ = 1200;
+    this.canvas.addEventListener(
+      "wheel",
+      (e) => {
+        if (!this.thirdPerson) return;
+        this.viewRadius = Math.min(14, Math.max(3.5, this.viewRadius + Math.sign(e.deltaY) * 0.6));
+        e.preventDefault();
+      },
+      { passive: false },
+    );
 
     this.goToPlace(this.state.place);
     this.bindInput();
@@ -301,6 +313,7 @@ export class Game {
     else if (code === "KeyE") this.nearestInteraction()?.act();
     else if (code === "KeyH") this.toggleMount();
     else if (code === "KeyC") this.openCodex();
+    else if (code === "KeyV") this.setThirdPerson(!this.thirdPerson);
   }
 
   /** Player and other people. Animals do not wake a verse. */
@@ -350,9 +363,60 @@ export class Game {
 
   /** The near plane must stay above the ground when the view tilts down a slope. */
   private keepEyesAboveGround(): void {
-    const eye = this.camera.position;
-    const floor = this.world.heightAt(eye.x, eye.z) + 0.4;
-    if (eye.y < floor) eye.y = floor;
+    if (!this.thirdPerson) {
+      const eye = this.camera.position;
+      const floor = this.world.heightAt(eye.x, eye.z) + 0.4;
+      if (eye.y < floor) eye.y = floor;
+      return;
+    }
+    const target = this.orbitTarget();
+    let radius = this.viewRadius;
+    for (let i = 0; i < 10 && radius > 1.2; i++) {
+      const pos = this.orbitAt(radius, target);
+      if (pos.y >= this.world.heightAt(pos.x, pos.z) + 0.55) break;
+      radius *= 0.72;
+    }
+    this.camera.radius = radius;
+  }
+
+  /** Where the orbit camera will sit for a radius. Matches Babylon's arc. */
+  private orbitTarget(): Vector3 {
+    const locked = this.camera.lockedTarget;
+    if (locked) return locked.getAbsolutePosition();
+    return this.camera.getTarget();
+  }
+
+  private orbitAt(radius: number, target: Vector3): Vector3 {
+    const a = this.camera.alpha;
+    const b = this.camera.beta;
+    return new Vector3(
+      target.x + radius * Math.cos(a) * Math.sin(b),
+      target.y + radius * Math.cos(b),
+      target.z + radius * Math.sin(a) * Math.sin(b),
+    );
+  }
+
+  private setThirdPerson(third: boolean): void {
+    this.thirdPerson = third;
+    for (const mesh of this.playerRig.meshes) mesh.isVisible = third;
+    if (third) {
+      this.camera.beta = Math.min(1.2, Math.max(0.55, this.camera.beta));
+      this.camera.lowerBetaLimit = 0.45;
+      this.camera.upperBetaLimit = 1.35;
+      this.camera.lowerRadiusLimit = 1.2;
+      this.camera.upperRadiusLimit = 14;
+      this.camera.minZ = 0.15;
+      this.hud.toast("View from behind. Press V to look through your own eyes.");
+    } else {
+      this.camera.lowerBetaLimit = 0.2;
+      this.camera.upperBetaLimit = 2.4;
+      this.camera.lowerRadiusLimit = 0.04;
+      this.camera.upperRadiusLimit = 0.04;
+      this.camera.radius = 0.04;
+      this.camera.minZ = 0.05;
+      this.hud.toast("Your own eyes. Press V for the view from behind.");
+    }
+    this.keepEyesAboveGround();
   }
 
   private forward(): Vector3 {
@@ -366,11 +430,13 @@ export class Game {
     let iz = 0;
     if (k.has("KeyW") || k.has("ArrowUp")) iz += 1;
     if (k.has("KeyS") || k.has("ArrowDown")) iz -= 1;
-    if (k.has("KeyD") || k.has("ArrowRight")) ix += 1;
-    if (k.has("KeyA") || k.has("ArrowLeft")) ix -= 1;
+    if (k.has("KeyD")) ix += 1;
+    if (k.has("KeyA")) ix -= 1;
+    const turn = 1.8 * dt;
+    if (k.has("ArrowLeft")) this.camera.alpha += turn;
+    if (k.has("ArrowRight")) this.camera.alpha -= turn;
     const looking = k.has("ControlLeft") || k.has("ControlRight");
     if (looking && (ix || iz)) {
-      const turn = 1.8 * dt;
       this.camera.alpha -= ix * turn;
       const beta = this.camera.beta - iz * turn * 0.7;
       this.camera.beta = Math.min(this.camera.upperBetaLimit ?? beta, Math.max(this.camera.lowerBetaLimit ?? beta, beta));

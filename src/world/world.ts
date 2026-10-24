@@ -164,9 +164,11 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     [-7, -62, 0.3],
     [8, -63, -0.4],
   ]) {
-    const tent = cyl(tx, 1.5, tz, 3, 0.15, 4.4, tentCloth, 6);
+    const tent = cyl(tx, 1.5, tz, 3, 0.15, 4.4, tentCloth, 8);
     tent.rotation.y = rot;
     cyl(tx, 3.2, tz, 0.6, 0.06, 0.06, darkWood, 6);
+    const flap = box(tx, 0.9, tz + 1.5, 1.1, 1.6, 0.06, darkWood);
+    flap.rotation.y = rot;
     solidBox(tx, tz, 3.2, 3.2);
   }
   box(3.5, 0.02, -60.5, 2.2, 0.03, 1.4, rugMat, false, 0.2);
@@ -182,6 +184,10 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   for (const px of [-4, 4]) {
     for (let i = 0; i < 5; i++) cyl(px + (rand() - 0.5) * 0.06, 0.65 + i * 1.28, -25, 1.25, 1.18, 1.25, stone, 14);
     box(px, 6.55, -25, 1.6, 0.35, 1.6, ashlar);
+    const molding = MeshBuilder.CreateTorus("molding", { diameter: 1.7, thickness: 0.12, tessellation: 12 }, scene);
+    molding.position.set(px, 6.2, -25);
+    molding.material = ashlar;
+    statics.push(molding);
     solidBox(px, -25, 1.3, 1.3);
   }
   box(0, 7.2, -25, 10, 1.1, 1.5, ashlar);
@@ -233,8 +239,8 @@ export function buildWorld(scene: Scene, pal: Palette): World {
       x += Math.cos(lean) * i * 0.06;
       z += Math.sin(lean) * i * 0.06;
     }
-    for (let k = 0; k < 9; k++) {
-      const yaw = (k / 9) * Math.PI * 2 + rand() * 0.3;
+    for (let k = 0; k < 11; k++) {
+      const yaw = (k / 11) * Math.PI * 2 + rand() * 0.2;
       const droop = 0.35 + rand() * 0.35;
       const len = 2.8;
       const f = box(
@@ -408,12 +414,16 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   ball(60, 7.2, 47.6, 0.6, bronze, 10);
   for (const z of [54, 60, 66]) {
     for (const wx of [51.45, 52.55, 67.45, 68.55]) {
-      box(wx, 3.3, z, 0.1, 1.8, 0.9, windowDark);
+      box(wx, 4.35, z, 0.18, 0.14, 1.15, ashlar);
+      box(wx, 2.35, z, 0.18, 0.12, 1.15, ashlar);
+      box(wx, 3.3, z, 0.08, 1.7, 0.85, windowDark);
       const top = cyl(wx, 4.2, z, 0.1, 0.9, 0.9, windowDark, 14);
       top.rotation.z = Math.PI / 2;
     }
   }
   box(60, 0.03, 60, 15, 0.06, 23, pal.mat("floor", [0.55, 0.5, 0.45], "ashlar", 5));
+  box(60, 0.08, 62, 4.2, 0.02, 6.5, rugMat);
+  box(56.2, 0.08, 68, 2.4, 0.02, 3.2, pal.mat("floor-rug", [0.35, 0.22, 0.16], "stripes", 2));
   for (const z of [52, 58, 64, 70]) box(60, 6.2, z, 17, 0.4, 0.4, darkWood);
   box(55, 0.6, 62, 1, 1.2, 0.8, wood, true);
   cyl(55.4, 1.35, 61.75, 0.25, 0.06, 0.06, pal.mat("wax", [0.92, 0.88, 0.78]), 6);
@@ -540,8 +550,10 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     if (!clear(x, z, 12)) continue;
     const y = gy(x, z);
     if (rand() < 0.5) {
-      const b = ball(x, y + 0.25, z, 0.6 + rand() * 0.7, shrub, 6);
-      b.scaling.y = 0.6;
+      const b = ball(x, y + 0.28, z, 0.7 + rand() * 0.6, shrub, 7);
+      b.scaling.y = 0.55;
+      const side = ball(x + 0.28, y + 0.18, z + 0.1, 0.4 + rand() * 0.25, palmLeaf, 6);
+      side.scaling.y = 0.5;
     } else {
       for (let k = 0; k < 4; k++) {
         const blade = cyl(x + (rand() - 0.5) * 0.4, y + 0.3, z + (rand() - 0.5) * 0.4, 0.6, 0, 0.08, dryGrass, 4);
@@ -556,17 +568,21 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     if (onRoad(x, z, 0.8) || Math.hypot(x, z) > 155) return;
     const y = gy(x, z);
     if (kind === "cypress") {
-      cyl(x, y + 3.2, z, 6.4, 0.12, 1.45, cypress, 8);
-      cyl(x, y + 0.35, z, 0.7, 0.2, 0.22, darkWood, 6);
+      cyl(x, y + 3.4, z, 6.2, 0.08, 1.35, cypress, 10);
+      cyl(x, y + 5.1, z, 2.6, 0.02, 0.55, cypress, 8);
+      cyl(x, y + 0.4, z, 0.8, 0.22, 0.28, darkWood, 7);
     } else if (kind === "acacia") {
-      cyl(x, y + 1.35, z, 2.7, 0.1, 0.28, darkWood, 6);
-      const canopy = ball(x, y + 2.85, z, 3.1, palmLeaf, 8);
-      canopy.scaling.set(1.45, 0.32, 1.45);
+      cyl(x, y + 1.35, z, 2.7, 0.1, 0.28, darkWood, 7);
+      const canopy = ball(x, y + 2.9, z, 3.2, palmLeaf, 8);
+      canopy.scaling.set(1.5, 0.28, 1.5);
+      const under = ball(x + 0.4, y + 2.45, z - 0.3, 2.2, shrub, 7);
+      under.scaling.set(1.2, 0.22, 1.1);
     } else {
-      cyl(x, y + 1.15, z, 2.3, 0.18, 0.34, darkWood, 7);
-      ball(x, y + 2.55, z, 2.1, cypress, 8);
-      ball(x + 0.75, y + 2.2, z + 0.25, 1.45, palmLeaf, 7);
-      ball(x - 0.55, y + 2.25, z - 0.35, 1.3, shrub, 7);
+      cyl(x, y + 1.2, z, 2.4, 0.16, 0.36, darkWood, 8);
+      ball(x, y + 2.7, z, 2.2, cypress, 8);
+      ball(x + 0.8, y + 2.25, z + 0.3, 1.5, palmLeaf, 7);
+      ball(x - 0.6, y + 2.3, z - 0.4, 1.35, shrub, 7);
+      ball(x + 0.15, y + 3.15, z - 0.1, 1.15, cypress, 7);
     }
     solidBox(x, z, 0.75, 0.75);
   };
