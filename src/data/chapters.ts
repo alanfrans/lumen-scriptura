@@ -1,6 +1,6 @@
 import { isRule, type HourWindow, type RuleId } from "../challenge/rules";
 import { compileChapter } from "./compile";
-import { PLACE_SOUTH_ROAD } from "./era";
+import { PLACE_EDEN, PLACE_SOUTH_ROAD } from "./era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "./identity";
 import { chapterTexts } from "./reading";
 import { GENESIS_CHAPTERS } from "./canon";
@@ -18,12 +18,14 @@ export interface ChapterSpec {
 const EVENING: HourWindow = { from: 0.65, to: 0.2, label: "evening" };
 
 /**
- * Genesis 1 is only `near`. Each later chapter adds one rule, at the south-road camp.
+ * Genesis 1 is only `near`, in the valley.
+ * Genesis 2 is walked in the garden, and the verses open in order.
+ * Each chapter after that adds one rule, at the south-road camp.
  * Order, then evening, then a witness, then the words, then carrying the verse to the lectern.
  */
 export const CHAPTERS: readonly ChapterSpec[] = [
   { book: BOOK_GENESIS, chapter: 1, place: PLACE_JORDAN_HILLS, rules: ["near"] },
-  { book: BOOK_GENESIS, chapter: 2, place: PLACE_SOUTH_ROAD, rules: ["near", "order"] },
+  { book: BOOK_GENESIS, chapter: 2, place: PLACE_EDEN, rules: ["near", "order"] },
   { book: BOOK_GENESIS, chapter: 3, place: PLACE_SOUTH_ROAD, rules: ["near", "hour"], hour: EVENING },
   { book: BOOK_GENESIS, chapter: 4, place: PLACE_SOUTH_ROAD, rules: ["near", "witness"] },
   { book: BOOK_GENESIS, chapter: 5, place: PLACE_SOUTH_ROAD, rules: ["near", "words"] },

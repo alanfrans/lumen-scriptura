@@ -22,7 +22,7 @@ import { blockReason, CARRY_LIMIT, holdsShut, NEAR_REACH, type RuleQuery } from 
 import { verseQuiz } from "./challenge/words";
 import { CANON_LEVELS, GENESIS_CHAPTERS, GENESIS_VERSES, TORAH_VERSES } from "./data/canon";
 import { chapterKey, chapterSpec, nextChapter } from "./data/chapters";
-import { placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
+import { PLACE_EDEN, placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
 import { compareVerseIds, PLACE_JORDAN_HILLS, verseId } from "./data/identity";
 import { CURRENT_LEVEL } from "./data/levels";
 import { PLACEMENTS, type Placement } from "./data/layout";
@@ -30,8 +30,9 @@ import { chapterPlacements, chapterTexts } from "./data/reading";
 import { Hud } from "./hud";
 import { clearState, loadState, saveState, STIPEND_PERIOD, type SaveState } from "./save";
 import { resolveCircle } from "./world/collision";
+import { EDEN_PATH } from "./world/eden";
 import { loadPlace } from "./world/place";
-import { LECTERN } from "./world/south-road";
+import { EAST_PATH, LECTERN } from "./world/south-road";
 import { VerseLights } from "./world/verses";
 import {
   CHAPEL,
@@ -175,6 +176,7 @@ export class Game {
     this.goToPlace(this.state.place);
     this.bindInput();
     this.placeLevelPin();
+    this.retitle();
 
     this.engine.runRenderLoop(() => {
       const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.05);
@@ -261,6 +263,18 @@ export class Game {
     horse.root.position.set(x, this.world.heightAt(x, z), z);
   }
 
+  /** The title card is the valley until a save is already standing in the garden. */
+  private retitle(): void {
+    if (this.state.place !== PLACE_EDEN) return;
+    const sub = document.querySelector<HTMLElement>("#title .sub");
+    if (sub) sub.textContent = "Genesis 2 · The garden of Eden";
+    const blurb = sub?.parentElement?.querySelector<HTMLElement>("p:not(.sub)");
+    if (blurb) {
+      blurb.textContent =
+        "The garden planted eastward in Eden holds the twenty-five verses of Genesis 2. They open in order, from the threshold of the seventh day to the north end of the grove. Adam keeps the garden and knows where each one rests.";
+    }
+  }
+
   /** Marks this level on the opening map. The pin moves when a new level begins. */
   private placeLevelPin(): void {
     const pin = document.getElementById("level-pin");
@@ -290,7 +304,13 @@ export class Game {
     this.started = true;
     document.getElementById("title")?.classList.add("hidden");
     this.canvas.focus();
-    if (!this.state.metMiriam) this.hud.toast("Miriam waits by the campfire. Walk to her and press E.");
+    if (this.state.place === PLACE_EDEN) {
+      this.hud.toast("Genesis 2 is planted here. The first verse is north of you. Adam knows the rest.");
+      return;
+    }
+    if (this.state.place === PLACE_JORDAN_HILLS && !this.state.metMiriam) {
+      this.hud.toast("Miriam waits by the campfire. Walk to her and press E.");
+    }
   }
 
   private onKey(code: string): void {
@@ -799,6 +819,24 @@ export class Game {
     if (w.tobias) list.push(npc("Talk to Tobias", w.tobias, () => this.talkTobias()));
     const joel = w.folk.find((rig) => rig.root.name === "joel");
     if (joel) list.push(npc("Talk to Joel", joel, () => this.talkJoel()));
+    const adam = w.folk.find((rig) => rig.root.name === "adam");
+    if (adam) list.push(npc("Talk to Adam", adam, () => this.talkAdam()));
+    const eve = w.folk.find((rig) => rig.root.name === "eve");
+    if (eve) list.push(npc("Talk to Eve", eve, () => this.talkEve()));
+    if (this.state.place === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EDEN) {
+      list.push({
+        label: "Take the eastward path to the garden",
+        ...EAST_PATH,
+        act: () => this.walkBetween(PLACE_EDEN, "Two days east. The garden of Eden is ahead."),
+      });
+    }
+    if (this.state.place === PLACE_EDEN) {
+      list.push({
+        label: "Take the westward path to the camp",
+        ...EDEN_PATH,
+        act: () => this.walkBetween(PLACE_SOUTH_ROAD, "Two days west. The south-road camp is ahead."),
+      });
+    }
     if (joel && this.chapterRules().includes("carry")) {
       list.push({
         label: this.state.carried.length ? "Set the verses on the lectern" : "The lectern",
@@ -930,7 +968,9 @@ export class Game {
     if (spec.place !== PLACE_JORDAN_HILLS) {
       this.hud.openDialog(
         who,
-        `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
+        spec.place === PLACE_EDEN
+          ? "Genesis 2 is in the garden of Eden. Press M and take the south road. From that camp, a path runs east to the garden."
+          : `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
       );
       return;
     }
@@ -1059,6 +1099,36 @@ export class Game {
     ]);
   }
 
+  private talkAdam(): void {
+    const who = "Adam, keeper of the garden";
+    if (this.chapterHave() === this.chapterTotal()) {
+      this.hud.openDialog(who, "The chapter is whole. Every verse of the garden is in your Codex.");
+      return;
+    }
+    const intro = "genesis.2.0";
+    if (this.chapterHave() === 0 && !this.state.hintRungs[intro]) {
+      this.state.hintRungs[intro] = 1;
+      this.persist();
+      this.hud.openDialog(
+        who,
+        "This is the garden planted eastward in Eden. Twenty-five verses of Genesis 2 lie here, and they open in order. The first rests on the threshold south of here, where the seventh day is kept.",
+      );
+      return;
+    }
+    const target = this.spots().find((p) => !this.has(p.verse));
+    if (target) this.verseHint(who, target);
+  }
+
+  private talkEve(): void {
+    const who = "Eve";
+    const line = this.has(25)
+      ? "We were not ashamed."
+      : this.has(22)
+        ? "Bone of my bones, he said, and flesh of my flesh."
+        : "The beasts all had names. None of them was a help meet for him.";
+    this.hud.openDialog(who, line);
+  }
+
   private talkJoel(): void {
     const spec = chapterSpec(this.state.book, this.state.chapter);
     const next = nextChapter(this.state.book, this.state.chapter);
@@ -1068,6 +1138,17 @@ export class Game {
         { label: `Begin Genesis ${next.chapter}`, onPick: () => this.beginChapter(next) },
         { label: "Not yet", onPick: () => {} },
       ]);
+      return;
+    }
+    if (spec.place === PLACE_EDEN && this.state.place !== PLACE_EDEN) {
+      this.hud.openDialog(
+        who,
+        "Genesis 2 is not in this camp. The garden of Eden is two days east. A path leaves the east side of the camp, past the sign.",
+      );
+      return;
+    }
+    if (spec.place !== this.state.place) {
+      this.hud.openDialog(who, `Genesis ${this.state.chapter} is at ${placeById(spec.place).name}. Press M, and take the road.`);
       return;
     }
     const bits: string[] = [];
@@ -1106,7 +1187,10 @@ export class Game {
   private showTravel(): void {
     const hops = roadsFrom(this.state.place);
     const hop = hops[0];
-    if (!hop) return;
+    if (!hop) {
+      if (this.state.place === PLACE_EDEN) this.hud.toast("The path south returns to the camp. The garden is not on this map.");
+      return;
+    }
     if (this.state.place === PLACE_JORDAN_HILLS && !this.state.sealed) {
       this.hud.toast("The south road opens when Genesis 1 is in the codex.");
       return;
@@ -1155,6 +1239,21 @@ export class Game {
     this.hideTravel();
     this.goToPlace(dest, true);
     this.hud.toast(`${hop.road.days} days on the road. You arrive at dawn.`);
+    if (dest === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EDEN) {
+      this.hud.toast("Genesis 2 is east of this camp. The path leaves past the sign.");
+    }
+    this.persist();
+  }
+
+  /** A path between two places, off the travel map. Two days, and you arrive at dawn. */
+  private walkBetween(id: string, toast: string): void {
+    this.mounted = false;
+    this.playerRig.setSeated(false);
+    this.state.placeAt[this.state.place] = { x: this.player.position.x, z: this.player.position.z };
+    this.state.elapsedDays += 2;
+    this.day = 0.32;
+    this.goToPlace(id, true);
+    this.hud.toast(toast);
     this.persist();
   }
 
@@ -1245,11 +1344,19 @@ export class Game {
     if (this.beaconHere(this.state.place)) this.raiseBeacon();
     const next = nextChapter(this.state.book, this.state.chapter);
     const here = next?.place === this.state.place;
+    const nextLine =
+      next == null
+        ? ""
+        : here
+          ? ` Genesis ${next.chapter} is here in the camp whenever you are ready.`
+          : ` Genesis ${next.chapter} is at ${placeById(next.place).name}.${
+              this.state.place === PLACE_EDEN && next.place === PLACE_SOUTH_ROAD ? " The path back leaves to the south." : ""
+            }`;
     this.hud.openDialog(
       `Chapter sealed: Genesis ${this.state.chapter}`,
       this.state.chapter === 1
         ? "All thirty-one verses are in your Codex. A Hope Beacon rises over the Ruined Arch. The south road is open: press M when you are ready to leave the valley. This chapter counts toward Genesis, the Torah, and all three canon levels: the Hebrew Bible, the Protestant Bible, and the Catholic Bible. Press C to see your Codex."
-        : `Genesis ${this.state.chapter} is in the Codex.${here ? ` Genesis ${next.chapter} is here in the camp whenever you are ready.` : ""}`,
+        : `Genesis ${this.state.chapter} is in the Codex.${nextLine}`,
       here && next
         ? [{ label: `Begin Genesis ${next.chapter}`, onPick: () => this.beginChapter(next) }, { label: "Not yet", onPick: () => {} }]
         : [],
@@ -1260,8 +1367,8 @@ export class Game {
     if (this.beacon && !this.beacon.isDisposed()) return;
     const b = MeshBuilder.CreateCylinder("beacon", { height: 140, diameter: 5, tessellation: 24 }, this.scene);
     this.beacon = b;
-    const at = this.state.place === PLACE_JORDAN_HILLS ? -25 : -2;
-    b.position.set(0, 70, at);
+    if (this.state.place === PLACE_EDEN) b.position.set(4, 70, 16);
+    else b.position.set(0, 70, this.state.place === PLACE_JORDAN_HILLS ? -25 : -2);
     const m = new StandardMaterial("beacon-mat", this.scene);
     m.emissiveColor = new Color3(1, 0.96, 0.85);
     m.diffuseColor = Color3.Black();
