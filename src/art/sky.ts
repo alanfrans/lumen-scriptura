@@ -1,4 +1,4 @@
-import { Color3, Color4, DynamicTexture, GlowLayer, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
+import { Color3, Color4, Constants, DynamicTexture, GlowLayer, Mesh, MeshBuilder, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import { planets, siderealTime, skyDirection, starCatalog, starDiameter, type PlanetSpec, type StarSpec } from "./heavens";
 
 export interface SkySample {
@@ -30,8 +30,10 @@ export class Sky {
   private readonly tex: DynamicTexture;
   private readonly cloudTex: DynamicTexture;
   private readonly sunMesh: Mesh;
+  private readonly sunHalo: Mesh;
   private readonly moonMesh: Mesh;
   private readonly sunMat: StandardMaterial;
+  private readonly sunHaloMat: StandardMaterial;
   private readonly moonMat: StandardMaterial;
   private readonly cloudMat: StandardMaterial;
   private readonly starMeshes: { mesh: Mesh; spec: StarSpec; base: number }[] = [];
@@ -85,14 +87,29 @@ export class Sky {
     this.sunMat.fogEnabled = false;
     this.sunMesh.material = this.sunMat;
 
+    this.sunHalo = MeshBuilder.CreateDisc("sun-halo", { radius: 58, tessellation: 36 }, scene);
+    this.sunHalo.billboardMode = Mesh.BILLBOARDMODE_ALL;
+    this.sunHalo.infiniteDistance = true;
+    this.sunHalo.isPickable = false;
+    this.sunHaloMat = new StandardMaterial("sun-halo-mat", scene);
+    this.sunHaloMat.emissiveColor = new Color3(1, 0.72, 0.32);
+    this.sunHaloMat.diffuseColor = Color3.Black();
+    this.sunHaloMat.specularColor = Color3.Black();
+    this.sunHaloMat.disableLighting = true;
+    this.sunHaloMat.fogEnabled = false;
+    this.sunHaloMat.alphaMode = Constants.ALPHA_ADD;
+    this.sunHaloMat.alpha = 0.12;
+    this.sunHalo.material = this.sunHaloMat;
+
     this.moonMesh = MeshBuilder.CreateDisc("moon", { radius: 12, tessellation: 28 }, scene);
     this.moonMesh.billboardMode = Mesh.BILLBOARDMODE_ALL;
     this.moonMesh.infiniteDistance = true;
     this.moonMat = new StandardMaterial("moon-mat", scene);
-    this.moonMat.emissiveColor = new Color3(0.82, 0.86, 0.95);
+    this.moonMat.emissiveColor = Color3.White();
     this.moonMat.diffuseColor = Color3.Black();
     this.moonMat.disableLighting = true;
     this.moonMat.fogEnabled = false;
+    this.moonMat.emissiveTexture = this.paintMoon(scene);
     this.moonMesh.material = this.moonMat;
 
     const tints = [
@@ -136,8 +153,43 @@ export class Sky {
   }
 
   excludeGlow(glow: GlowLayer): void {
-    const extras = [this.dome, this.clouds, this.sunMesh, this.moonMesh, ...this.starMeshes.map((s) => s.mesh), ...this.planetMeshes.map((p) => p.mesh)];
+    const extras = [this.dome, this.clouds, this.sunMesh, this.sunHalo, this.moonMesh, ...this.starMeshes.map((s) => s.mesh), ...this.planetMeshes.map((p) => p.mesh)];
     for (const mesh of extras) glow.addExcludedMesh(mesh);
+  }
+
+  private paintMoon(scene: Scene): DynamicTexture {
+    const tex = new DynamicTexture("moon-tex", { width: 128, height: 128 }, scene, false);
+    const ctx = tex.getContext() as unknown as CanvasRenderingContext2D;
+    ctx.clearRect(0, 0, 128, 128);
+    const disk = ctx.createRadialGradient(64, 64, 8, 64, 64, 62);
+    disk.addColorStop(0, "#f4f1e6");
+    disk.addColorStop(0.7, "#d5dbe8");
+    disk.addColorStop(1, "#b7c0d2");
+    ctx.fillStyle = disk;
+    ctx.beginPath();
+    ctx.arc(64, 64, 62, 0, Math.PI * 2);
+    ctx.fill();
+    const craters: [number, number, number, string][] = [
+      [46, 50, 10, "rgba(120,128,146,0.45)"],
+      [78, 44, 7, "rgba(110,118,136,0.4)"],
+      [70, 74, 12, "rgba(126,132,148,0.35)"],
+      [40, 78, 6, "rgba(108,116,134,0.4)"],
+      [88, 70, 5, "rgba(130,136,150,0.35)"],
+      [58, 36, 4, "rgba(116,124,140,0.4)"],
+    ];
+    for (const [x, y, r, color] of craters) {
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "rgba(255,255,255,0.18)";
+      ctx.beginPath();
+      ctx.arc(x - r * 0.25, y - r * 0.25, r * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    tex.update(false);
+    tex.updateSamplingMode(Texture.BILINEAR_SAMPLINGMODE);
+    return tex;
   }
 
   private paintClouds(): void {
@@ -241,6 +293,11 @@ export class Sky {
     this.sunMesh.scaling.setAll(0.75 + golden * 0.5);
     this.sunMat.emissiveColor = Color3.Lerp(new Color3(1, 0.98, 0.9), new Color3(1, 0.38, 0.08), golden);
     this.sunMat.alpha = sunVis;
+    this.sunHalo.isVisible = this.sunMesh.isVisible;
+    this.sunHalo.position.copyFrom(sunHold).scaleInPlace(455);
+    this.sunHalo.scaling.setAll(0.8 + golden * 0.55);
+    this.sunHaloMat.alpha = sunVis * (0.08 + golden * 0.16);
+    this.sunHaloMat.emissiveColor = Color3.Lerp(new Color3(1, 0.92, 0.7), new Color3(1, 0.42, 0.12), golden);
 
     const moonVec = skyDirection(lst - Math.PI, (5 * Math.PI) / 180, this.scratch);
     const moonAlt = moonVec.y;
