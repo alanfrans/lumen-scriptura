@@ -3,7 +3,7 @@
 Check an item off with `[x]` and add the PR link when it's merged. Alan adds new items over time.
 
 ## Graphics
-- [ ] Make graphics more detailed and realistic (terrain, characters, props, lighting, textures)
+- [x] Make graphics more detailed and realistic (terrain, characters, props, lighting, textures) — https://github.com/alanfrans/lumen-scriptura/pull/3
 
 ## Game rules
 - [ ] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter)
