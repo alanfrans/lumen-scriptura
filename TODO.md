@@ -6,7 +6,7 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 - [ ] Make graphics more detailed and realistic (terrain, characters, props, lighting, textures)
 
 ## Game rules
-- [ ] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter)
+- [x] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter)
 - [ ] Work out how to implement the chapter rules in code (rule system/architecture), then implement them
 
 ## Scenes (the next 9 chapters after the last chapter that has a scene)
