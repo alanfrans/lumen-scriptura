@@ -1,5 +1,5 @@
 import type { Placement } from "./layout";
-import { PLACEMENTS } from "./layout";
+import { EDEN_PLACEMENTS, PLACEMENTS } from "./layout";
 import { GENESIS_1 } from "./genesis1";
 import { GENESIS_2, GENESIS_3, GENESIS_4, GENESIS_5, GENESIS_6 } from "./genesis-later";
 import { GENESIS_REST } from "./genesis-rest";
@@ -20,9 +20,16 @@ export function chapterTexts(chapter: number): readonly string[] {
   return texts;
 }
 
-/** Genesis 1 keeps its valley sites. Later chapters stand in a ring around the south-road camp. */
+/** Genesis 1 keeps its valley sites. Genesis 2 is the garden. Later chapters stand in a ring around the south-road camp. */
 export function chapterPlacements(chapter: number): readonly Placement[] {
   if (chapter === 1) return PLACEMENTS;
+  if (chapter === 2) {
+    const count = chapterTexts(chapter).length;
+    if (EDEN_PLACEMENTS.length !== count) {
+      throw new Error(`Genesis 2 has ${count} verses and ${EDEN_PLACEMENTS.length} placements`);
+    }
+    return EDEN_PLACEMENTS;
+  }
   const count = chapterTexts(chapter).length;
   const spots: Placement[] = [];
   for (let i = 0; i < count; i++) {

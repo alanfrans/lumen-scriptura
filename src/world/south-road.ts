@@ -8,6 +8,9 @@ import type { World } from "./world";
 /** Where carried verses are set down. */
 export const LECTERN = { x: -8, z: -6 };
 
+/** The east side of the camp, where the path to the garden of Eden leaves. */
+export const EAST_PATH = { x: 26, z: 2.2 };
+
 /** A small camp past the south edge of the valley map. Flat ground, one road north. */
 export function buildSouthRoad(scene: Scene, pal: Palette): World {
   const colliders: Box[] = [];
@@ -118,6 +121,22 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
       crown.material = leaf;
     }
     solid(x, z, 0.7, 0.7);
+  }
+
+  const track = keep(MeshBuilder.CreateBox("east-track", { width: 20, height: 0.04, depth: 2.4 }, scene));
+  track.position.set(22, 0.025, 2.2);
+  track.material = dirt;
+  const signPost = keep(MeshBuilder.CreateBox("sign-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  signPost.position.set(26, 0.85, 4.3);
+  signPost.material = wood;
+  const board = keep(MeshBuilder.CreateBox("sign-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  board.position.set(26, 1.55, 4.3);
+  board.material = wood;
+  solid(26, 4.3, 0.5, 0.5);
+  for (const x of [16, 20, 24, 28]) {
+    const step = keep(MeshBuilder.CreateBox("step", { width: 0.7, height: 0.06, depth: 0.45 }, scene));
+    step.position.set(x, 0.04, 2.2);
+    step.material = stone;
   }
 
   const lectern = keep(MeshBuilder.CreateBox("lectern", { width: 0.7, height: 0.9, depth: 0.55 }, scene));
