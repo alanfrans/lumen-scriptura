@@ -3,6 +3,9 @@ import { PLACE_JORDAN_HILLS } from "./identity";
 /** The camp where the brick road leaves the valley map. */
 export const PLACE_SOUTH_ROAD = "south-road";
 
+/** The garden planted eastward in Eden. Reached on foot from the south-road camp. */
+export const PLACE_EDEN = "eden";
+
 export interface EraPlace {
   id: string;
   name: string;
@@ -44,6 +47,15 @@ export const PATRIARCHS = {
       mapY: 0.9,
       latitude: 32,
       spawn: { x: 0, z: 36 },
+    },
+    {
+      id: PLACE_EDEN,
+      name: "The garden of Eden",
+      // Stored with the place. The travel map does not draw the garden; the path from the camp is the way in.
+      mapX: 0.86,
+      mapY: 0.62,
+      latitude: 32,
+      spawn: { x: 0, z: -66 },
     },
   ] as const satisfies readonly EraPlace[],
   roads: [
