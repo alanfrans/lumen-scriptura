@@ -1,4 +1,4 @@
-import { Mesh, MeshBuilder, Scene, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
+import { Color3, Light, Mesh, MeshBuilder, PointLight, Scene, StandardMaterial, TransformNode, Vector3 } from "@babylonjs/core";
 import type { Palette, RGB } from "./materials";
 
 /** A posable figure. `root` sits at the feet; `speed` is ground speed in m/s. */
@@ -32,13 +32,19 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
   const robe = pal.mat(`${name}-robe`, look.robe, "cloth");
   const trim = pal.mat(`${name}-trim`, look.trim, "cloth");
   const headMat = pal.mat(`${name}-headwear`, look.head, "cloth");
-  const skin = pal.mat(`skin-${skinRgb.join("-")}`, skinRgb);
+  const skin = pal.mat(`skin-${skinRgb.join("-")}`, skinRgb, "skin");
   const leather = pal.mat("leather", [0.3, 0.2, 0.13], "grain");
   const eyeWhite = pal.mat("eye-white", [0.95, 0.93, 0.9]);
   const iris = pal.mat("iris", [0.35, 0.2, 0.12]);
   const pupil = pal.mat("pupil", [0.06, 0.04, 0.03]);
   const brow = pal.mat("brow", [0.22, 0.14, 0.1]);
   const lip = pal.mat("lip", [0.42, 0.22, 0.18]);
+  eyeWhite.specularColor = new Color3(0.55, 0.55, 0.52);
+  eyeWhite.specularPower = 64;
+  iris.specularColor = new Color3(0.22, 0.16, 0.12);
+  iris.specularPower = 28;
+  lip.specularColor = new Color3(0.16, 0.08, 0.07);
+  lip.specularPower = 20;
   const vestRgb: RGB = [
     look.robe[0] * 0.35 + look.trim[0] * 0.65,
     look.robe[1] * 0.35 + look.trim[1] * 0.65,
@@ -168,7 +174,7 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
     part(MeshBuilder.CreateTorus(`${name}-band`, { diameter: 0.32, thickness: 0.018, tessellation: 14 }, scene), body, trim, 0, 1.78, 0.01);
   }
   if (look.beard) {
-    const hair = pal.mat(`${name}-beard`, look.beard);
+    const hair = pal.mat(`${name}-beard`, look.beard, "fur");
     const chin = part(MeshBuilder.CreateSphere(`${name}-beard`, { diameter: 0.14, segments: 10 }, scene), body, hair, 0, 1.6, 0.1);
     chin.scaling.set(1.2, 0.75, 0.65);
     for (const side of [-1, 1]) {
@@ -178,6 +184,7 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
     const mustache = part(MeshBuilder.CreateSphere(`${name}-mustache`, { diameter: 0.07, segments: 8 }, scene), body, hair, 0, 1.67, 0.155);
     mustache.scaling.set(1.5, 0.35, 0.45);
   }
+  let lanternLight: PointLight | null = null;
   if (look.staff) {
     const wood = pal.mat("staff-wood", [0.4, 0.28, 0.17], "wood");
     part(MeshBuilder.CreateCylinder(`${name}-staff`, { height: 1.55, diameter: 0.032, tessellation: 10 }, scene), shoulders[1], wood, 0.04, -0.7, 0.04);
@@ -185,12 +192,26 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
     crook.rotation.x = Math.PI / 2;
   }
   if (look.lantern) {
-    const iron = pal.mat("iron", [0.25, 0.24, 0.23]);
+    const iron = pal.mat("iron", [0.32, 0.31, 0.3], "metal");
     for (const [lx, lz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]] as const) {
       part(MeshBuilder.CreateBox(`${name}-lantern-bar`, { width: 0.015, height: 0.16, depth: 0.015 }, scene), shoulders[0], iron, lx * 0.05, -0.55, lz * 0.05);
     }
     part(MeshBuilder.CreateBox(`${name}-lantern-cap`, { width: 0.12, height: 0.015, depth: 0.12 }, scene), shoulders[0], iron, 0, -0.46, 0);
-    part(MeshBuilder.CreateSphere(`${name}-lantern-flame`, { diameter: 0.07, segments: 6 }, scene), shoulders[0], pal.glow("watch-flame", [1, 0.42, 0.15]), 0, -0.54, 0);
+    const flameMesh = part(
+      MeshBuilder.CreateSphere(`${name}-lantern-flame`, { diameter: 0.07, segments: 6 }, scene),
+      shoulders[0],
+      pal.glow("watch-flame", [1, 0.42, 0.15]),
+      0,
+      -0.54,
+      0,
+    );
+    lanternLight = new PointLight(`${name}-lantern`, Vector3.Zero(), scene);
+    lanternLight.parent = flameMesh;
+    lanternLight.diffuse = new Color3(1, 0.58, 0.28);
+    lanternLight.specular = new Color3(1, 0.42, 0.18);
+    lanternLight.intensity = 0.32;
+    lanternLight.range = 6;
+    lanternLight.falloffType = Light.FALLOFF_STANDARD;
   }
   if (look.satchel) {
     const bag = part(MeshBuilder.CreateBox(`${name}-satchel`, { width: 0.16, height: 0.2, depth: 0.08 }, scene), body, leather, -0.2, 1.05, -0.08);
@@ -208,6 +229,7 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
     meshes,
     animate(dt, speed) {
       idle += dt;
+      if (lanternLight) lanternLight.intensity = 0.28 + Math.sin(idle * 15) * 0.04 + Math.sin(idle * 27) * 0.025;
       const target = seated ? 0 : Math.min(0.75, speed * 0.085);
       amp += (target - amp) * Math.min(1, dt * 8);
       phase += dt * (2.2 + speed * 0.95);
@@ -234,9 +256,9 @@ export function buildPerson(scene: Scene, pal: Palette, name: string, look: Pers
 export function buildHorse(scene: Scene, pal: Palette): Rig {
   const root = new Mesh("horse", scene);
   const meshes: Mesh[] = [];
-  const coat = pal.mat("horse-coat", [0.42, 0.27, 0.15], "grain");
-  const mane = pal.mat("horse-mane", [0.12, 0.09, 0.07], "grain");
-  const hoof = pal.mat("horse-hoof", [0.15, 0.13, 0.12]);
+  const coat = pal.mat("horse-coat", [0.42, 0.27, 0.15], "fur");
+  const mane = pal.mat("horse-mane", [0.12, 0.09, 0.07], "fur");
+  const hoof = pal.mat("horse-hoof", [0.18, 0.16, 0.14], "grain");
   const saddle = pal.mat("saddle-cloth", [0.55, 0.18, 0.15], "stripes");
 
   const part = (m: Mesh, parent: TransformNode | Mesh, material: StandardMaterial, x = 0, y = 0, z = 0) => {
@@ -263,8 +285,15 @@ export function buildHorse(scene: Scene, pal: Palette): Rig {
   headPivot.parent = neckPivot;
   headPivot.position.set(0, 0.88, 0);
   headPivot.rotation.x = 0.45;
-  part(MeshBuilder.CreateBox("horse-head", { width: 0.26, height: 0.28, depth: 0.66 }, scene), headPivot, coat, 0, 0, 0.24);
-  part(MeshBuilder.CreateBox("horse-muzzle", { width: 0.22, height: 0.22, depth: 0.2 }, scene), headPivot, mane, 0, -0.02, 0.58);
+  const skull = part(MeshBuilder.CreateSphere("horse-head", { diameter: 0.36, segments: 10 }, scene), headPivot, coat, 0, 0.02, 0.16);
+  skull.scaling.set(0.72, 0.78, 1.35);
+  const muzzle = part(MeshBuilder.CreateSphere("horse-muzzle", { diameter: 0.22, segments: 8 }, scene), headPivot, mane, 0, -0.03, 0.46);
+  muzzle.scaling.set(0.82, 0.7, 1.2);
+  const nostrilMat = pal.mat("horse-nostril", [0.1, 0.07, 0.05]);
+  for (const side of [-1, 1]) {
+    const nostril = part(MeshBuilder.CreateSphere("horse-nostril", { diameter: 0.035, segments: 5 }, scene), headPivot, nostrilMat, side * 0.045, -0.05, 0.58);
+    nostril.scaling.set(1, 0.65, 0.55);
+  }
   const horseEye = pal.mat("horse-eye", [0.08, 0.06, 0.05]);
   for (const side of [-1, 1]) {
     part(MeshBuilder.CreateSphere("horse-eye", { diameter: 0.06, segments: 6 }, scene), headPivot, horseEye, side * 0.12, 0.06, 0.42);
@@ -332,8 +361,8 @@ export function buildBeast(scene: Scene, pal: Palette, name: string, kind: Beast
     dog: { coat: [0.45, 0.3, 0.16] as RGB, dark: [0.28, 0.18, 0.1] as RGB, y: 0.42, len: 0.7, rad: 0.16, leg: 0.28, neck: 0.16, wool: false },
     cat: { coat: [0.72, 0.5, 0.28] as RGB, dark: [0.35, 0.22, 0.12] as RGB, y: 0.26, len: 0.46, rad: 0.1, leg: 0.16, neck: 0.08, wool: false },
   }[kind];
-  const coat = pal.mat(`${kind}-coat`, spec.coat, kind === "sheep" ? "cloth" : "grain");
-  const dark = pal.mat(`${kind}-dark`, spec.dark);
+  const coat = pal.mat(`${kind}-coat`, spec.coat, "fur");
+  const dark = pal.mat(`${kind}-dark`, spec.dark, "grain");
   const part = (m: Mesh, parent: TransformNode | Mesh, material: StandardMaterial, x = 0, y = 0, z = 0) => {
     m.parent = parent;
     m.material = material;
@@ -359,15 +388,23 @@ export function buildBeast(scene: Scene, pal: Palette, name: string, kind: Beast
   neck.rotation.x = kind === "camel" ? 0.9 : 0.5;
   part(MeshBuilder.CreateCylinder(`${name}-neck`, { height: spec.neck, diameterTop: spec.rad * 0.45, diameterBottom: spec.rad * 0.7, tessellation: 8 }, scene), neck, coat, 0, spec.neck * 0.45, 0);
   const head = part(
-    MeshBuilder.CreateBox(`${name}-head`, { width: spec.rad * 0.8, height: spec.rad * 0.7, depth: spec.rad * 1.3 }, scene),
+    MeshBuilder.CreateSphere(`${name}-head`, { diameter: spec.rad * 0.95, segments: 8 }, scene),
     neck,
     kind === "sheep" ? dark : coat,
     0,
     spec.neck * 0.85,
-    spec.rad * 0.7,
+    spec.rad * 0.55,
   );
-  if (kind === "sheep") head.scaling.set(1, 1, 1.1);
-  part(MeshBuilder.CreateBox(`${name}-snout`, { width: spec.rad * 0.5, height: spec.rad * 0.4, depth: spec.rad * 0.45 }, scene), neck, dark, 0, spec.neck * 0.75, spec.rad * 1.35);
+  head.scaling.set(0.9, 0.82, 1.28);
+  const snout = part(
+    MeshBuilder.CreateSphere(`${name}-snout`, { diameter: spec.rad * 0.55, segments: 7 }, scene),
+    neck,
+    dark,
+    0,
+    spec.neck * 0.72,
+    spec.rad * 1.15,
+  );
+  snout.scaling.set(0.85, 0.68, 1.15);
   const beastEye = pal.mat("beast-eye", [0.1, 0.08, 0.06]);
   for (const side of [-1, 1]) {
     part(

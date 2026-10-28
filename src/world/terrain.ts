@@ -31,7 +31,9 @@ function rawHeight(x: number, z: number): number {
   const raw =
     3.2 * Math.sin(x * 0.045 + 1.3) * Math.cos(z * 0.04 - 0.7) +
     1.8 * Math.sin(x * 0.11 + z * 0.07) +
-    1.1 * Math.cos(x * 0.16 - z * 0.13 + 2);
+    1.1 * Math.cos(x * 0.16 - z * 0.13 + 2) +
+    0.32 * Math.sin(x * 0.31 + 0.6) * Math.cos(z * 0.28 - 1.2) +
+    0.15 * Math.sin((x + z) * 0.57 + 2.1);
   let h = Math.max(0, raw + 1.2) + smooth(115, 170, Math.hypot(x, z)) * 18 + hillHeight(x, z);
   let mask = 0;
   for (const [zx, zz, r] of FLAT_ZONES) {

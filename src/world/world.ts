@@ -1,5 +1,6 @@
-import { Color3, Mesh, MeshBuilder, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
-import type { Palette } from "../art/materials";
+import { Color3, Light, Mesh, MeshBuilder, PointLight, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
+import type { Palette, RGB } from "../art/materials";
+import { createTexture } from "../art/textures";
 import { buildBeast, buildHorse, buildPerson, type BeastKind, type PersonLook, type Rig } from "../art/models";
 import { PLACEMENTS } from "../data/layout";
 import type { Box } from "./collision";
@@ -36,6 +37,10 @@ export interface World {
   wanderers: Wanderer[];
   /** Merged scenery and the oasis water. Disposed with the place. */
   scenery: Mesh[];
+  /** Lamps that belong to this district and are disposed with it. */
+  lamps: PointLight[];
+  /** Scrolls water and flickers fires. */
+  tick?(dt: number, time: number): void;
 }
 
 export const CHAPEL = { minX: 52, maxX: 68, minZ: 48, maxZ: 72 };
@@ -123,24 +128,24 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     return j;
   };
 
-  const stone = pal.mat("stone", [0.68, 0.62, 0.53], "grain", 2);
+  const stone = pal.mat("stone", [0.68, 0.62, 0.53], "rock", 2);
   const ashlar = pal.mat("ashlar", [0.74, 0.67, 0.57], "ashlar");
   const lowWall = pal.mat("low-wall", [0.62, 0.57, 0.5], "ashlar");
-  const darkStone = pal.mat("dark-stone", [0.45, 0.42, 0.39], "grain", 1.5);
+  const darkStone = pal.mat("dark-stone", [0.45, 0.42, 0.39], "rock", 1.5);
   const wood = pal.mat("wood", [0.45, 0.31, 0.19], "wood");
   const darkWood = pal.mat("dark-wood", [0.3, 0.2, 0.12], "wood");
-  const palmLeaf = pal.mat("palm-leaf", [0.3, 0.48, 0.2], "grain");
+  const palmLeaf = pal.mat("palm-leaf", [0.32, 0.5, 0.18], "leaf");
   const palmTrunk = pal.mat("palm-trunk", [0.5, 0.38, 0.26], "wood", 2);
-  const shrub = pal.mat("shrub", [0.42, 0.45, 0.25], "grain");
-  const dryGrass = pal.mat("dry-grass", [0.62, 0.55, 0.32], "grain");
-  const cypress = pal.mat("cypress", [0.16, 0.3, 0.17], "grain", 2);
+  const shrub = pal.mat("shrub", [0.4, 0.48, 0.22], "leaf");
+  const dryGrass = pal.mat("dry-grass", [0.66, 0.58, 0.3], "leaf", 2);
+  const cypress = pal.mat("cypress", [0.18, 0.32, 0.16], "leaf", 2);
   const flame = pal.glow("flame", [1, 0.55, 0.18]);
-  const iron = pal.mat("iron", [0.25, 0.24, 0.23]);
+  const iron = pal.mat("iron", [0.32, 0.31, 0.3], "metal");
   const clay = pal.mat("clay", [0.68, 0.4, 0.25], "grain");
-  const wool = pal.mat("wool", [0.92, 0.9, 0.84], "cloth");
-  const sheepFace = pal.mat("sheep-face", [0.18, 0.15, 0.13]);
+  const wool = pal.mat("wool", [0.92, 0.9, 0.84], "fur");
+  const sheepFace = pal.mat("sheep-face", [0.18, 0.15, 0.13], "grain");
   const windowDark = pal.mat("window", [0.06, 0.05, 0.05]);
-  const bronze = pal.mat("bronze", [0.55, 0.4, 0.2]);
+  const bronze = pal.mat("bronze", [0.62, 0.44, 0.2], "metal");
   const tentCloth = pal.mat("tent-cloth", [0.66, 0.55, 0.4], "stripes");
   const rugMat = pal.mat("rug", [0.55, 0.2, 0.16], "stripes", 2);
   const tobiasCloth = pal.mat("tobias-cloth", [0.38, 0.25, 0.48], "stripes");
@@ -220,12 +225,19 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   const water = MeshBuilder.CreateDisc("water", { radius: 17, tessellation: 64 }, scene);
   water.rotation.x = Math.PI / 2;
   water.position.set(-60, -0.15, 60);
+  const ripple = createTexture(scene, "ripple");
+  ripple.diffuse.uScale = ripple.diffuse.vScale = 3;
+  ripple.bump.uScale = ripple.bump.vScale = 3;
+  ripple.bump.level = 0.28;
   const waterMat = new StandardMaterial("water", scene);
-  waterMat.diffuseColor = new Color3(0.12, 0.32, 0.42);
-  waterMat.specularColor = new Color3(0.6, 0.6, 0.6);
+  waterMat.diffuseTexture = ripple.diffuse;
+  waterMat.bumpTexture = ripple.bump;
+  waterMat.diffuseColor = new Color3(0.28, 0.48, 0.5);
+  waterMat.specularColor = new Color3(0.72, 0.78, 0.76);
   waterMat.specularPower = 64;
-  waterMat.emissiveColor = new Color3(0.02, 0.06, 0.08);
-  waterMat.alpha = 0.88;
+  waterMat.emissiveColor = new Color3(0.02, 0.045, 0.05);
+  waterMat.useSpecularOverAlpha = true;
+  waterMat.alpha = 0.9;
   water.material = waterMat;
 
   const palm = (px: number, pz: number) => {
@@ -243,17 +255,19 @@ export function buildWorld(scene: Scene, pal: Palette): World {
       const yaw = (k / 11) * Math.PI * 2 + rand() * 0.2;
       const droop = 0.35 + rand() * 0.35;
       const len = 2.8;
-      const f = box(
-        x + Math.sin(yaw) * Math.cos(droop) * len * 0.5,
-        y - Math.sin(droop) * len * 0.5,
-        z + Math.cos(yaw) * Math.cos(droop) * len * 0.5,
-        0.55,
-        0.05,
-        len,
-        palmLeaf,
-      );
-      f.rotation.y = yaw;
-      f.rotation.x = droop;
+      const along = (t: number) => ({
+        x: x + Math.sin(yaw) * Math.cos(droop) * len * t,
+        y: y - Math.sin(droop) * len * t,
+        z: z + Math.cos(yaw) * Math.cos(droop) * len * t,
+      });
+      const mid = along(0.38);
+      const tip = along(0.78);
+      const base = box(mid.x, mid.y, mid.z, 0.62, 0.04, len * 0.58, palmLeaf);
+      base.rotation.y = yaw;
+      base.rotation.x = droop;
+      const end = box(tip.x, tip.y, tip.z, 0.22, 0.03, len * 0.4, palmLeaf);
+      end.rotation.y = yaw;
+      end.rotation.x = droop;
     }
     for (let k = 0; k < 3; k++) ball(x + (rand() - 0.5) * 0.4, y - 0.25, z + (rand() - 0.5) * 0.4, 0.22, clay, 6);
     solidBox(px, pz, 0.7, 0.7);
@@ -371,7 +385,7 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   solidBox(-12, 77, 0.6, 50);
   solidBox(32, 77, 0.6, 50);
   box(18, 0.35, 70, 2.5, 0.5, 0.7, wood, true);
-  box(18, 0.58, 70, 2.3, 0.06, 0.5, pal.mat("trough-water", [0.15, 0.3, 0.38]));
+  box(18, 0.58, 70, 2.3, 0.06, 0.5, pal.mat("trough-water", [0.22, 0.42, 0.5], "ripple", 2));
   for (let i = 0; i < 9; i++) {
     const sx = -6 + rand() * 32;
     const sz = 60 + rand() * 36;
@@ -531,7 +545,7 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     const z = (rand() - 0.5) * 290;
     if (!clear(x, z, 22)) continue;
     const s = 0.4 + rand() * 1.6;
-    const rock = ball(x, gy(x, z) + s * 0.15, z, 1, rand() < 0.5 ? stone : darkStone, 5);
+    const rock = ball(x, gy(x, z) + s * 0.15, z, 1, rand() < 0.5 ? stone : darkStone, 8);
     const sx = s * (1 + rand());
     const sy = s * 0.6;
     const sz = s;
@@ -569,6 +583,7 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     const y = gy(x, z);
     if (kind === "cypress") {
       cyl(x, y + 3.4, z, 6.2, 0.08, 1.35, cypress, 10);
+      cyl(x + 0.18, y + 3.7, z - 0.08, 5.1, 0.04, 0.9, cypress, 9);
       cyl(x, y + 5.1, z, 2.6, 0.02, 0.55, cypress, 8);
       cyl(x, y + 0.4, z, 0.8, 0.22, 0.28, darkWood, 7);
     } else if (kind === "acacia") {
@@ -691,6 +706,32 @@ export function buildWorld(scene: Scene, pal: Palette): World {
   sitBeast("cat", -58, 52, 0.5);
   sitBeast("dog", 8, 62, 2);
 
+  const lamps: PointLight[] = [];
+  const flicker: { light: PointLight; base: number; speed: number }[] = [];
+  const addLamp = (name: string, x: number, y: number, z: number, intensity: number, range: number, color: RGB, speed: number) => {
+    const light = new PointLight(name, new Vector3(x, y, z), scene);
+    light.diffuse = new Color3(color[0], color[1], color[2]);
+    light.specular = new Color3(color[0], color[1] * 0.8, color[2] * 0.55);
+    light.intensity = intensity;
+    light.range = range;
+    light.falloffType = Light.FALLOFF_STANDARD;
+    lamps.push(light);
+    flicker.push({ light, base: intensity, speed });
+  };
+  addLamp("campfire-light", 0, 1.15, -58, 0.32, 9, [1, 0.62, 0.28], 11);
+  addLamp("candle-light", 55.4, 1.75, 61.75, 0.16, 4.5, [1, 0.74, 0.4], 9);
+
+  let clock = 0;
+  const tick = (dt: number, time: number) => {
+    clock += dt;
+    ripple.bump.uOffset = clock * 0.035;
+    ripple.bump.vOffset = clock * 0.012;
+    ripple.diffuse.uOffset = clock * 0.02;
+    for (const lamp of flicker) {
+      lamp.light.intensity = lamp.base * (1 + Math.sin(time * lamp.speed) * 0.08 + Math.sin(time * lamp.speed * 2.17) * 0.05);
+    }
+  };
+
   return {
     colliders,
     ground,
@@ -707,11 +748,14 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
+    lamps,
+    tick,
   };
 }
 
 /** Drop a district without touching the player, sky, or shared materials. */
 export function disposeWorld(world: World): void {
+  for (const lamp of world.lamps) lamp.dispose();
   const rigs = [
     world.horse,
     world.miriam,

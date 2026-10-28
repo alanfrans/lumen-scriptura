@@ -1,6 +1,6 @@
-import { Mesh, MeshBuilder, Scene, StandardMaterial } from "@babylonjs/core";
+import { Color3, Light, Mesh, MeshBuilder, PointLight, Scene, StandardMaterial, Texture, Vector3 } from "@babylonjs/core";
 import type { Palette } from "../art/materials";
-import { textureFactory } from "../art/textures";
+import { createTexture } from "../art/textures";
 import { buildPerson } from "../art/models";
 import type { Box } from "./collision";
 import type { World } from "./world";
@@ -26,18 +26,22 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
 
   const ground = MeshBuilder.CreateGround("ground", { width: 300, height: 300, subdivisions: 2 }, scene);
   const groundMat = new StandardMaterial("camp-ground", scene);
-  const sand = textureFactory(scene)("sand");
-  sand.uScale = sand.vScale = 16;
-  groundMat.diffuseTexture = sand;
-  groundMat.diffuseColor.set(0.78, 0.64, 0.42);
-  groundMat.specularColor.set(0.02, 0.02, 0.02);
+  const sand = createTexture(scene, "sand");
+  sand.diffuse.uScale = sand.diffuse.vScale = 14;
+  sand.bump.uScale = sand.bump.vScale = 14;
+  sand.bump.level = 0.6;
+  groundMat.diffuseTexture = sand.diffuse;
+  groundMat.bumpTexture = sand.bump;
+  groundMat.diffuseColor.set(0.92, 0.76, 0.52);
+  groundMat.specularColor.set(0.07, 0.06, 0.05);
+  groundMat.specularPower = 22;
   ground.material = groundMat;
 
   const dirt = pal.mat("south-road-dirt", [0.45, 0.32, 0.18], "grain");
   const cloth = pal.mat("south-road-tent", [0.55, 0.42, 0.28], "cloth");
   const wood = pal.mat("wood", [0.45, 0.31, 0.19], "wood");
-  const stone = pal.mat("stone", [0.68, 0.62, 0.53], "grain", 2);
-  const leaf = pal.mat("cypress", [0.16, 0.3, 0.17], "grain", 2);
+  const stone = pal.mat("stone", [0.68, 0.62, 0.53], "rock", 2);
+  const leaf = pal.mat("south-leaf", [0.2, 0.36, 0.18], "leaf", 2);
 
   const road = keep(MeshBuilder.CreateBox("road", { width: 4.5, height: 0.04, depth: 90 }, scene));
   road.position.set(0, 0.02, 20);
@@ -72,7 +76,8 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
   lip.material = stone;
   const water = keep(MeshBuilder.CreateCylinder("well-water", { height: 0.08, diameter: 1.2, tessellation: 16 }, scene));
   water.position.set(7, 0.7, -2);
-  water.material = pal.mat("well-water", [0.2, 0.35, 0.42]);
+  const wellMat = pal.mat("well-water", [0.22, 0.42, 0.5], "ripple", 2);
+  water.material = wellMat;
   for (const x of [6.1, 7.9]) {
     const post = keep(MeshBuilder.CreateBox("well-post", { width: 0.12, height: 1.6, depth: 0.12 }, scene));
     post.position.set(x, 1.7, -2);
@@ -152,6 +157,14 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
   page.material = pal.mat("page", [0.9, 0.86, 0.74], "cloth");
   solid(LECTERN.x, LECTERN.z, 1.1, 0.7);
 
+  const fireLight = new PointLight("south-fire", new Vector3(0, 0.85, 0), scene);
+  fireLight.diffuse = new Color3(1, 0.58, 0.24);
+  fireLight.specular = new Color3(1, 0.45, 0.18);
+  fireLight.intensity = 0.3;
+  fireLight.range = 8;
+  fireLight.falloffType = Light.FALLOFF_STANDARD;
+  const wellBump = wellMat.bumpTexture;
+
   const joel = buildPerson(scene, pal, "joel", {
     robe: [0.4, 0.32, 0.22],
     trim: [0.62, 0.5, 0.28],
@@ -179,5 +192,13 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
     wanderers: [],
     scenery,
     heightAt,
+    lamps: [fireLight],
+    tick(dt, time) {
+      if (wellBump instanceof Texture) {
+        wellBump.uOffset += dt * 0.03;
+        wellBump.vOffset += dt * 0.018;
+      }
+      fireLight.intensity = 0.3 * (1 + Math.sin(time * 12) * 0.08 + Math.sin(time * 23) * 0.05);
+    },
   };
 }

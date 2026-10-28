@@ -2,14 +2,18 @@ import {
   ArcRotateCamera,
   CascadedShadowGenerator,
   Color3,
+  Color4,
   Constants,
+  DefaultRenderingPipeline,
   DirectionalLight,
   Engine,
   GlowLayer,
   HemisphericLight,
+  ImageProcessingConfiguration,
   Mesh,
   MeshBuilder,
   Scene,
+  ShadowGenerator,
   StandardMaterial,
   Vector3,
 } from "@babylonjs/core";
@@ -124,14 +128,19 @@ export class Game {
     this.engine = new Engine(canvas, true, { stencil: true });
     this.scene = new Scene(this.engine);
     this.scene.fogMode = Scene.FOGMODE_EXP2;
+    this.scene.onNewMaterialAddedObservable.add((material) => {
+      if (material instanceof StandardMaterial) material.maxSimultaneousLights = 6;
+    });
 
     const sunDir = new Vector3(0.2, -0.8, 0.4);
     this.hemi = new HemisphericLight("sky-light", new Vector3(0, 1, 0), this.scene);
     this.hemi.groundColor = new Color3(0.42, 0.36, 0.3);
+    this.hemi.specular = new Color3(0.12, 0.12, 0.13);
     this.sun = new DirectionalLight("sun-light", sunDir, this.scene);
     this.sun.diffuse = new Color3(1, 0.93, 0.8);
+    this.sun.specular = new Color3(1, 0.96, 0.88);
     this.glow = new GlowLayer("glow", this.scene);
-    this.glow.intensity = 0.7;
+    this.glow.intensity = 0.55;
     this.sky = new Sky(this.scene);
     this.sky.excludeGlow(this.glow);
 
@@ -163,6 +172,7 @@ export class Game {
     this.camera.inertia = 0;
     this.camera.minZ = 0.05;
     this.camera.maxZ = 1200;
+    this.setupLook();
     this.canvas.addEventListener(
       "wheel",
       (e) => {
@@ -186,6 +196,7 @@ export class Game {
         this.day = (this.day + dt / DAY_LENGTH) % 1;
         this.paintSky();
         this.lights.update(this.time, dt, []);
+        this.world.tick?.(dt, this.time);
       }
       this.scene.render();
     });
@@ -232,15 +243,44 @@ export class Game {
     }
   }
 
+  private setupLook(): void {
+    const look = new DefaultRenderingPipeline("look", false, this.scene, [this.camera]);
+    look.fxaaEnabled = true;
+    look.samples = 1;
+    look.bloomEnabled = true;
+    look.bloomThreshold = 0.62;
+    look.bloomWeight = 0.16;
+    look.bloomKernel = 48;
+    look.bloomScale = 0.5;
+    look.sharpenEnabled = true;
+    look.sharpen.edgeAmount = 0.2;
+    look.grainEnabled = true;
+    look.grain.intensity = 3;
+    look.grain.animated = true;
+    const grade = this.scene.imageProcessingConfiguration;
+    grade.contrast = 1.14;
+    grade.exposure = 1.08;
+    grade.toneMappingEnabled = true;
+    grade.toneMappingType = ImageProcessingConfiguration.TONEMAPPING_ACES;
+    grade.vignetteEnabled = true;
+    grade.vignetteWeight = 0.9;
+    grade.vignetteStretch = 0.4;
+    grade.vignetteColor = new Color4(0.05, 0.035, 0.025, 1);
+    grade.vignetteBlendMode = ImageProcessingConfiguration.VIGNETTEMODE_MULTIPLY;
+  }
+
   private setupShadows(): void {
-    const csm = new CascadedShadowGenerator(1024, this.sun);
+    const csm = new CascadedShadowGenerator(2048, this.sun);
     this.shadows = csm;
     csm.numCascades = 3;
-    csm.shadowMaxZ = 140;
-    csm.lambda = 0.85;
+    csm.shadowMaxZ = 120;
+    csm.lambda = 0.75;
     csm.stabilizeCascades = true;
     csm.usePercentageCloserFiltering = true;
-    csm.setDarkness(0.35);
+    csm.filteringQuality = ShadowGenerator.QUALITY_MEDIUM;
+    csm.normalBias = 0.02;
+    csm.bias = 0.002;
+    csm.setDarkness(0.45);
     for (const m of this.scene.meshes) {
       if (/^(verse|beacon|sky|sun|moon|star|planet|milky|water|ground|camera-anchor|folk|beast)/.test(m.name)) continue;
       csm.addShadowCaster(m, false);
@@ -360,6 +400,7 @@ export class Game {
   private update(dt: number): void {
     this.time += dt;
     this.day = (this.day + dt / DAY_LENGTH) % 1;
+    this.world.tick?.(dt, this.time);
     this.keepEyesAboveGround();
     this.paintSky();
     this.lights.update(this.time, dt, this.peopleNearVerses(), this.shutVerses());
