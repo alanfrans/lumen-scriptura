@@ -12,7 +12,7 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 
 ## Game rules
 - [x] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter) (https://github.com/alanfrans/lumen-scriptura/pull/1)
-- [ ] Work out how to implement the chapter rules in code (rule system/architecture), then implement them
+- [x] Work out how to implement the chapter rules in code (rule system/architecture), then implement them — https://github.com/alanfrans/lumen-scriptura/pull/7
 
 ## Scenes (the next 9 chapters after the last chapter that has a scene)
 - [x] Build the scene for next chapter #1 (Genesis 2) — https://github.com/alanfrans/lumen-scriptura/pull/2
