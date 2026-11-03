@@ -7,6 +7,9 @@ import type { Wanderer, World } from "./world";
 /** South of the planted garden, where the path back to the camp is taken. */
 export const EDEN_PATH = { x: 0, z: -76 };
 
+/** East of the planting, where the way out toward Genesis 3 leaves. */
+export const EDEN_EAST = { x: 80, z: 6.4 };
+
 const SPRING = { x: 22, z: 22, r: 3.3 };
 
 /** The river that waters the garden, then the four heads: Pison, Gihon, Hiddekel, Euphrates. */
@@ -197,7 +200,8 @@ export function buildEden(scene: Scene, pal: Palette): World {
     Math.hypot(x - 2, z - 6) >= r &&
     Math.hypot(x - 2, z - 60) >= r &&
     Math.hypot(x, z + 66) >= 3 &&
-    Math.hypot(x, z + 76) >= 2.4;
+    Math.hypot(x, z + 76) >= 2.4 &&
+    Math.hypot(x - EDEN_EAST.x, z - EDEN_EAST.z) >= 2.6;
 
   // Sabbath court. The first four verses stand here, in order.
   box(0, 0.04, -52, 3.4, 0.06, 1.7, ashlar);
@@ -414,11 +418,14 @@ export function buildEden(scene: Scene, pal: Palette): World {
   box(-12.2, 0.08, 46.2, 2, 0.1, 1.05, linen);
   box(-12.2, 0.16, 46.6, 0.7, 0.12, 0.35, linen);
 
-  // Westward path, back to the camp.
+  // Westward path, back to the camp. Eastward path, on toward the cool of the day.
   const home = box(0, 0.03, -78, 3.2, 0.05, 22, soil);
   home.material = soil;
   box(2.6, 0.9, -80, 0.14, 1.8, 0.14, wood, true);
   box(2.6, 1.6, -80, 1.05, 0.4, 0.08, wood);
+  box(74, 0.03, 4, 28, 0.05, 2.6, soil);
+  box(EDEN_EAST.x, 0.9, EDEN_EAST.z, 0.14, 1.8, 0.14, wood, true);
+  box(EDEN_EAST.x, 1.62, EDEN_EAST.z, 1.2, 0.42, 0.08, wood);
 
   const perch = (x: number, y: number, z: number, yaw: number) => {
     const body = ball(x, y, z, 0.16, bird, 6);
@@ -554,5 +561,6 @@ export function buildEden(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
+    lamps: [],
   };
 }
