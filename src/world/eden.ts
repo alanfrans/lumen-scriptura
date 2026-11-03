@@ -554,5 +554,6 @@ export function buildEden(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
+    lamps: [],
   };
 }
