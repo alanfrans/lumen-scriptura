@@ -554,5 +554,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
+    // No lamps of its own. Leaving the garden still disposes this list.
+    lamps: [],
   };
 }

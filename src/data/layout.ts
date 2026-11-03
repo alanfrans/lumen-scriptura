@@ -23,7 +23,11 @@ export interface Placement {
   area: string;
   /** Completes the sentence "Verse N rests ..." */
   landmark: string;
-  owner?: "tobias";
+  /**
+   * Someone else holds this tablet. The same verse must be an `OwnedVerse` on the chapter,
+   * which is what names the price and the trade. Walking up to it does not collect it.
+   */
+  owner?: string;
 }
 
 const ARCH = "Ruined Arch of the First Light";

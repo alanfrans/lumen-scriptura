@@ -1,6 +1,8 @@
 # Game rules
 
-Design for what the player does, finishes, and collects in each chapter that exists in `src/data`. This is the document the follow-up todo ("Work out how to implement the chapter rules in code") should implement. It does not add a rule system.
+Design for what the player does, finishes, and collects in each chapter that exists in `src/data`. The rule system that plays this design is [rule-system.md](rule-system.md).
+
+Where this document says a correct `words` answer collects the verse before it is carried, that was the old `takeVerse`. The system finishes the line, then carries it, on the chapters that list both.
 
 The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GENESIS_VERSES`). Two places exist (`src/data/era.ts`):
 

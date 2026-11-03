@@ -3,10 +3,8 @@ import type { Palette } from "../art/materials";
 import { createTexture } from "../art/textures";
 import { buildPerson } from "../art/models";
 import type { Box } from "./collision";
+import { SOUTH_ROAD_LECTERN as LECTERN } from "../data/play";
 import type { World } from "./world";
-
-/** Where carried verses are set down. */
-export const LECTERN = { x: -8, z: -6 };
 
 /** The east side of the camp, where the path to the garden of Eden leaves. */
 export const EAST_PATH = { x: 26, z: 2.2 };
