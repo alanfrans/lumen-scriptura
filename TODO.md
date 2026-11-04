@@ -16,7 +16,7 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 
 ## Scenes (the next 9 chapters after the last chapter that has a scene)
 - [x] Build the scene for next chapter #1 (Genesis 2) — https://github.com/alanfrans/lumen-scriptura/pull/2
-- [ ] Build the scene for next chapter #2
+- [x] Build the scene for next chapter #2 (Genesis 3) — https://github.com/alanfrans/lumen-scriptura/pull/6
 - [ ] Build the scene for next chapter #3
 - [ ] Build the scene for next chapter #4
 - [ ] Build the scene for next chapter #5
