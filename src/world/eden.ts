@@ -92,7 +92,7 @@ function paintEden(scene: Scene): StandardMaterial {
 /**
  * The garden of Genesis 2.
  * South is the seventh day, west the field before rain, the midst the two trees,
- * and the river east of them parts toward Havilah, Gihon, Hiddekel, and the Euphrates.
+ * and a lake east of them feeds Pison, Gihon, Hiddekel, and the Euphrates.
  * The verses open in that order along the worn path.
  */
 export function buildEden(scene: Scene, pal: Palette): World {

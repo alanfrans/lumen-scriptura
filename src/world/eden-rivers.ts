@@ -17,21 +17,33 @@ import { EDEN_PLACEMENTS } from "../data/layout";
 const SOUTH_SIGN = { x: 2.6, z: -80 };
 const EAST_GATE = { x: 80, z: 6.4 };
 
-/** The spring in the midst, where the river parts into four heads. */
-export const SPRING = { x: 22, z: 22, r: 5.15 };
+/**
+ * The lake at the head of the four rivers. Its surface is one flat elevation,
+ * and every outlet steps down from there.
+ */
+export const LAKE = { x: 32, z: 21, r: 10 };
+
+/** Highest water. The plain sits at 0, so the lake is a broad basin just below it. */
+const LAKE_LEVEL = -0.24;
+
+/** Meters of drop per meter of channel. A longer river therefore ends in a deeper cut. */
+const GRADE = 0.03;
 
 export interface RiverCourse {
   name: string;
   width: number;
   points: { x: number; z: number }[];
+  /** Water-surface elevation at each point. Strictly decreasing, and flat across the channel. */
+  level: number[];
+  /** Positive downstream slope, meters of drop per meter of run. */
+  slope: number;
 }
 
 const HEADS: readonly { name: string; x: number; z: number; width: number; waves: number; sway: number }[] = [
-  { name: "feeder", x: 0, z: 8, width: 2.7, waves: 1.1, sway: 0.42 },
-  { name: "pison", x: 60, z: 48, width: 3.15, waves: 1.7, sway: 1 },
-  { name: "gihon", x: 54, z: 4, width: 2.9, waves: 2.3, sway: 0.85 },
-  { name: "hiddekel", x: 74, z: 26, width: 2.85, waves: 0.6, sway: 1 },
-  { name: "euphrates", x: 24, z: 64, width: 3.05, waves: 2.8, sway: 1 },
+  { name: "pison", x: 56.5, z: 47, width: 3.15, waves: 1.7, sway: 1 },
+  { name: "gihon", x: 51.6, z: 6.5, width: 3.0, waves: 2.1, sway: 0.9 },
+  { name: "hiddekel", x: 76.4, z: 23.6, width: 2.9, waves: 0.7, sway: 1 },
+  { name: "euphrates", x: 26.5, z: 61.5, width: 3.1, waves: 2.4, sway: 1 },
 ];
 
 const WALK: readonly [number, number][] = [
@@ -46,6 +58,8 @@ interface Seg {
   bx: number;
   bz: number;
   half: number;
+  y0: number;
+  y1: number;
 }
 
 const CELL = 8;
@@ -74,6 +88,7 @@ function repel(x: number, z: number, cx: number, cz: number, rad: number): [numb
 function pushPoint(x: number, z: number): [number, number] {
   let px = x;
   let pz = z;
+  [px, pz] = repel(px, pz, LAKE.x, LAKE.z, LAKE.r + 1.45);
   for (const p of EDEN_PLACEMENTS) {
     [px, pz] = repel(px, pz, p.x, p.z, 6.9);
   }
@@ -116,16 +131,16 @@ function pushOut(x: number, z: number, minX: number, maxX: number, minZ: number,
 }
 
 function meander(head: (typeof HEADS)[number]): { x: number; z: number }[] {
-  const dx = head.x - SPRING.x;
-  const dz = head.z - SPRING.z;
+  const dx = head.x - LAKE.x;
+  const dz = head.z - LAKE.z;
   const len = hypot(dx, dz) || 1;
   const ux = dx / len;
   const uz = dz / len;
   const nx = -uz;
   const nz = ux;
-  const startX = SPRING.x + ux * (SPRING.r - 0.55);
-  const startZ = SPRING.z + uz * (SPRING.r - 0.55);
-    const steps = Math.max(18, Math.round(len / 0.85));
+  const startX = LAKE.x + ux * (LAKE.r - 1.15);
+  const startZ = LAKE.z + uz * (LAKE.r - 1.15);
+  const steps = Math.max(18, Math.round(len / 0.85));
   const pts: { x: number; z: number }[] = [];
   for (let i = 0; i <= steps; i++) {
     const t = i / steps;
@@ -196,11 +211,37 @@ function resample(pts: { x: number; z: number }[], spacing: number): { x: number
   return out;
 }
 
-export const COURSES: RiverCourse[] = HEADS.map((head) => ({
-  name: head.name,
-  width: head.width,
-  points: meander(head),
-}));
+/** Walk the finished polyline. The lake stays flat; past the shore every step falls. */
+function descend(points: { x: number; z: number }[]): { level: number[]; slope: number } {
+  const level = [LAKE_LEVEL];
+  let run = 0;
+  let drop = 0;
+  let left = hypot(points[0].x - LAKE.x, points[0].z - LAKE.z) > LAKE.r + 0.02;
+  for (let i = 1; i < points.length; i++) {
+    const step = Math.max(0.05, hypot(points[i].x - points[i - 1].x, points[i].z - points[i - 1].z));
+    const outside = hypot(points[i].x - LAKE.x, points[i].z - LAKE.z) > LAKE.r + 0.02;
+    if (!outside) {
+      if (left) throw new Error("River re-entered the lake");
+      level.push(LAKE_LEVEL);
+      continue;
+    }
+    left = true;
+    const fall = Math.max(0.006, GRADE * step);
+    level.push(level[i - 1] - fall);
+    run += step;
+    drop += fall;
+  }
+  for (let i = 1; i < level.length; i++) {
+    if (level[i] > level[i - 1] + 1e-5) throw new Error("River surface rose along its course");
+  }
+  return { level, slope: run > 0 ? drop / run : GRADE };
+}
+
+export const COURSES: RiverCourse[] = HEADS.map((head) => {
+  const points = meander(head);
+  const { level, slope } = descend(points);
+  return { name: head.name, width: head.width, points, level, slope };
+});
 
 function turn(prev: { x: number; z: number }, at: { x: number; z: number }, next: { x: number; z: number }): number {
   const ax = at.x - prev.x;
@@ -225,9 +266,9 @@ export const BENDS: { x: number; z: number }[] = COURSES.flatMap((course) => {
 const SEGS: Seg[] = [];
 const GRID = new Map<string, number[]>();
 
-function addSeg(ax: number, az: number, bx: number, bz: number, half: number): void {
+function addSeg(ax: number, az: number, bx: number, bz: number, half: number, y0: number, y1: number): void {
   const id = SEGS.length;
-  SEGS.push({ ax, az, bx, bz, half });
+  SEGS.push({ ax, az, bx, bz, half, y0, y1 });
   const minX = Math.min(ax, bx);
   const maxX = Math.max(ax, bx);
   const minZ = Math.min(az, bz);
@@ -247,23 +288,24 @@ for (const course of COURSES) {
   for (let i = 1; i < pts.length; i++) {
     const t = (i - 0.5) / (pts.length - 1);
     const mouth = t > 0.84 ? (t - 0.84) / 0.16 : 0;
-    const half = (course.width / 2) * (1 + mouth * 0.9);
-    addSeg(pts[i - 1].x, pts[i - 1].z, pts[i].x, pts[i].z, half);
+    const source = t < 0.14 ? (0.14 - t) / 0.14 : 0;
+    const half = (course.width / 2) * (1 + source * 1.15 + mouth * 0.35);
+    addSeg(pts[i - 1].x, pts[i - 1].z, pts[i].x, pts[i].z, half, course.level[i - 1], course.level[i]);
   }
 }
 
-function pathClose(x: number, z: number): boolean {
-  for (let i = 1; i < WALK.length; i++) {
-    const [ax, az] = WALK[i - 1];
-    const [bx, bz] = WALK[i];
-    if (distSeg(x, z, ax, az, bx, bz) < 2.15) return true;
-  }
-  return false;
+function segClosest(x: number, z: number, s: Seg): { dist: number; t: number } {
+  const dx = s.bx - s.ax;
+  const dz = s.bz - s.az;
+  const len2 = dx * dx + dz * dz;
+  const t = len2 < 1e-6 ? 0 : Math.min(1, Math.max(0, ((x - s.ax) * dx + (z - s.az) * dz) / len2));
+  return { dist: hypot(x - (s.ax + dx * t), z - (s.az + dz * t)), t };
 }
 
-/** Negative inside the water. */
-export function waterSigned(x: number, z: number): number {
-  let best = hypot(x - SPRING.x, z - SPRING.z) - SPRING.r;
+/** Signed distance to the nearest river (negative inside) and the surface there. */
+function nearestRiver(x: number, z: number): { sd: number; level: number } {
+  let best = 1e9;
+  let level = LAKE_LEVEL;
   const gx = Math.floor(x / CELL);
   const gz = Math.floor(z / CELL);
   for (let ix = gx - 1; ix <= gx + 1; ix++) {
@@ -272,11 +314,32 @@ export function waterSigned(x: number, z: number): number {
       if (!list) continue;
       for (const id of list) {
         const s = SEGS[id];
-        best = Math.min(best, distSeg(x, z, s.ax, s.az, s.bx, s.bz) - s.half);
+        const hit = segClosest(x, z, s);
+        const sd = hit.dist - s.half;
+        if (sd < best) {
+          best = sd;
+          level = s.y0 + (s.y1 - s.y0) * hit.t;
+        }
       }
     }
   }
-  return best;
+  return { sd: best, level };
+}
+
+/** Negative inside the water. The lake and the nearer river share one field. */
+export function waterSigned(x: number, z: number): number {
+  const lakeSd = hypot(x - LAKE.x, z - LAKE.z) - LAKE.r;
+  return Math.min(lakeSd, nearestRiver(x, z).sd);
+}
+
+/**
+ * Water-surface elevation. Flat across a channel, constant on the lake,
+ * and equal to the nearer body's height where a river leaves the shore.
+ */
+function waterLevel(x: number, z: number): number {
+  const lakeSd = hypot(x - LAKE.x, z - LAKE.z) - LAKE.r;
+  const river = nearestRiver(x, z);
+  return lakeSd <= river.sd ? LAKE_LEVEL : river.level;
 }
 
 export function waterDist(x: number, z: number): number {
@@ -307,26 +370,34 @@ function flatZone(x: number, z: number): boolean {
   if (hypot(x - EAST_GATE.x, z - EAST_GATE.z) < 3.2) return true;
   if (hypot(x + 2, z - 18) < 2.3) return true;
   if (hypot(x - 10, z - 16) < 2.3) return true;
+  if (hypot(x - 62, z - 50) < 1.5) return true;
+  if (hypot(x - 56, z - 2) < 1.5) return true;
+  if (hypot(x - 72, z - 28) < 1.5) return true;
+  if (hypot(x - 22, z - 66) < 1.5) return true;
   return false;
 }
 
-/** Sunken bed: deepest in the channel, rising across a soft bank to level ground. */
+/** How far the bed sits under the surface. Deeper in the middle, shallow at the shore. */
+function channelDepth(sd: number): number {
+  const t = Math.min(1, Math.max(0, -sd) / 1.6);
+  const s = t * t * (3 - 2 * t);
+  return 0.16 + 0.42 * s;
+}
+
+/**
+ * The channel is cut so its waterline is `waterLevel`: flat across the width,
+ * highest on the lake, and lower downstream. The bank climbs from that line to the plain.
+ */
 export function bedHeight(x: number, z: number): number {
-  if (flatZone(x, z)) return 0;
   const sd = waterSigned(x, z);
-  const lip = 2.85;
+  const lip = 2.35;
   if (sd >= lip) return 0;
-  const ford = pathClose(x, z);
-  const edge = ford ? -0.16 : -0.4;
-  const deep = ford ? -0.26 : -0.76;
-  if (sd <= 0) {
-    const t = Math.min(1, -sd / 1.55);
-    const s = t * t * (3 - 2 * t);
-    return edge + (deep - edge) * s;
-  }
+  if (flatZone(x, z) && sd > 0.2) return 0;
+  const level = waterLevel(x, z);
+  if (sd <= 0) return level - channelDepth(sd);
   const u = sd / lip;
   const s = u * u * (3 - 2 * u);
-  return edge * (1 - s);
+  return level * (1 - s);
 }
 
 export function displaceEdenGround(ground: Mesh): void {
@@ -345,11 +416,6 @@ export function displaceEdenGround(ground: Mesh): void {
   ground.refreshBoundingInfo();
 }
 
-/** Water sits in the trench, below the grassy lip and above the mud bed. */
-function surfaceY(x: number, z: number): number {
-  return bedHeight(x, z) + 0.2;
-}
-
 function courseFrame(course: RiverCourse, i: number): { rx: number; rz: number; half: number; y: number; dist: number } {
   const pts = course.points;
   const prev = pts[Math.max(0, i - 1)];
@@ -361,27 +427,78 @@ function courseFrame(course: RiverCourse, i: number): { rx: number; rz: number; 
   tz /= len;
   const t = i / Math.max(1, pts.length - 1);
   const mouth = t > 0.84 ? (t - 0.84) / 0.16 : 0;
-  const half = (course.width / 2) * (1 + 0.08 * Math.sin(t * Math.PI * 3) + mouth * 0.85);
+  const source = t < 0.14 ? (0.14 - t) / 0.14 : 0;
+  const half = (course.width / 2) * (1 + source * 1.15 + 0.08 * Math.sin(t * Math.PI * 3) + mouth * 0.35);
   let dist = 0;
   for (let k = 1; k <= i; k++) dist += hypot(pts[k].x - pts[k - 1].x, pts[k].z - pts[k - 1].z);
-  return { rx: tz, rz: -tx, half, y: surfaceY(pts[i].x, pts[i].z), dist };
+  return { rx: tz, rz: -tx, half, y: course.level[i], dist };
+}
+
+/** First station on or outside the shore. The lake owns the water inside that line. */
+function shoreIndex(course: RiverCourse): number {
+  for (let i = 0; i < course.points.length; i++) {
+    const p = course.points[i];
+    if (hypot(p.x - LAKE.x, p.z - LAKE.z) >= LAKE.r - 0.05) return i;
+  }
+  return 0;
 }
 
 function buildRibbon(course: RiverCourse): { positions: number[]; indices: number[]; uvs: number[] } {
   const positions: number[] = [];
   const indices: number[] = [];
   const uvs: number[] = [];
-  for (let i = 0; i < course.points.length; i++) {
+  const start = shoreIndex(course);
+  for (let i = start; i < course.points.length; i++) {
     const p = course.points[i];
     const f = courseFrame(course, i);
     positions.push(p.x - f.rx * f.half, f.y, p.z - f.rz * f.half, p.x + f.rx * f.half, f.y, p.z + f.rz * f.half);
     const u = f.dist * 0.18;
     uvs.push(u, 0, u, 1);
-    if (i > 0) {
-      const a = (i - 1) * 2;
+    if (i > start) {
+      const a = (i - start - 1) * 2;
       indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
     }
   }
+  return { positions, indices, uvs };
+}
+
+/** Flat-to-pouring water from the lake's round shore out to the first river cross-section. */
+function outletBay(course: RiverCourse): { positions: number[]; indices: number[]; uvs: number[] } {
+  const i0 = shoreIndex(course);
+  const p = course.points[i0];
+  const f = courseFrame(course, i0);
+  const lx = p.x - f.rx * f.half;
+  const lz = p.z - f.rz * f.half;
+  const rx = p.x + f.rx * f.half;
+  const rz = p.z + f.rz * f.half;
+  const leftA = Math.atan2(lz - LAKE.z, lx - LAKE.x);
+  const rightA = Math.atan2(rz - LAKE.z, rx - LAKE.x);
+  let sweep = rightA - leftA;
+  while (sweep > Math.PI) sweep -= Math.PI * 2;
+  while (sweep < -Math.PI) sweep += Math.PI * 2;
+  const steps = Math.max(4, Math.ceil(Math.abs(sweep) / (Math.PI / 40)));
+  const positions: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const uvAt = (x: number, z: number) => [0.5 + (x - LAKE.x) / (LAKE.r * 2), 0.5 + (z - LAKE.z) / (LAKE.r * 2)];
+  const rad = LAKE.r - 0.04;
+  for (let i = 0; i <= steps; i++) {
+    const a = leftA + (sweep * i) / steps;
+    const x = LAKE.x + Math.cos(a) * rad;
+    const z = LAKE.z + Math.sin(a) * rad;
+    positions.push(x, LAKE_LEVEL, z);
+    uvs.push(...uvAt(x, z));
+  }
+  const mid = steps + 1;
+  positions.push(p.x, f.y, p.z);
+  uvs.push(...uvAt(p.x, p.z));
+  positions.push(lx, f.y, lz);
+  uvs.push(...uvAt(lx, lz));
+  positions.push(rx, f.y, rz);
+  uvs.push(...uvAt(rx, rz));
+  for (let i = 0; i < steps; i++) triUp(positions, indices, i, i + 1, mid);
+  triUp(positions, indices, 0, mid, mid + 1);
+  triUp(positions, indices, steps, mid + 2, mid);
   return { positions, indices, uvs };
 }
 
@@ -434,7 +551,8 @@ function buildBank(course: RiverCourse, lift: number): { positions: number[]; in
   ];
   const strideOf = (n: number) => 1 + n * 2;
   let stride = 0;
-  for (let i = 0; i < course.points.length; i++) {
+  const start = shoreIndex(course);
+  for (let i = start; i < course.points.length; i++) {
     const p = course.points[i];
     const f = courseFrame(course, i);
     const lats = latsFor(f.half);
@@ -452,9 +570,10 @@ function buildBank(course: RiverCourse, lift: number): { positions: number[]; in
       }
     }
   }
-  for (let i = 1; i < course.points.length; i++) {
-    const base = (i - 1) * stride;
-    const next = i * stride;
+  const rows = course.points.length - start;
+  for (let row = 1; row < rows; row++) {
+    const base = (row - 1) * stride;
+    const next = row * stride;
     quad(positions, indices, base, base + 2, next, next + 2);
     quad(positions, indices, base, next, base + 1, next + 1);
     const rings = (stride - 1) / 2;
@@ -495,35 +614,70 @@ function applyMesh(
   return mesh;
 }
 
-function springRing(): { positions: number[]; indices: number[]; colors: number[] } {
+/** Lake floor and beach, including the center so the sunk ground never shows through the water. */
+function lakeBowl(): { positions: number[]; indices: number[]; colors: number[] } {
   const positions: number[] = [];
   const indices: number[] = [];
   const colors: number[] = [];
-  const steps = 48;
-  const rows = [0.4, 1.3, 2.4, 3.6, SPRING.r - 0.15, SPRING.r + 0.35, SPRING.r + 1.05, SPRING.r + 1.85, SPRING.r + 2.7];
+  const steps = 80;
+  const rings = [2.2, 4.6, 6.8, 8.4, 9.45, 10.02, 10.5, 11.15, 11.85, 12.5];
+  const lift = 0.03;
+  positions.push(LAKE.x, bedHeight(LAKE.x, LAKE.z) + lift, LAKE.z);
+  colors.push(0.4, 0.28, 0.16, 1);
   for (let i = 0; i <= steps; i++) {
     const a = (i / steps) * Math.PI * 2;
     const cs = Math.cos(a);
     const sn = Math.sin(a);
-    for (const rad of rows) {
-      const x = SPRING.x + cs * rad;
-      const z = SPRING.z + sn * rad;
-      const tint = bankTint(Math.max(0, rad - (SPRING.r - 1.4)), 1.3);
-      positions.push(x, bedHeight(x, z) + 0.05, z);
+    for (const rad of rings) {
+      const x = LAKE.x + cs * rad;
+      const z = LAKE.z + sn * rad;
+      const tint = bankTint(Math.max(0, rad - (LAKE.r - 1.2)), 1.5);
+      positions.push(x, bedHeight(x, z) + lift, z);
       colors.push(tint[0], tint[1], tint[2], 1);
     }
   }
-  const stride = rows.length;
+  const stride = rings.length;
+  const riverGap = (...ids: number[]) => {
+    let sx = 0;
+    let sz = 0;
+    for (const id of ids) {
+      const x = positions[id * 3];
+      const z = positions[id * 3 + 2];
+      if (hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 0.15) return false;
+      sx += x;
+      sz += z;
+    }
+    return nearestRiver(sx / ids.length, sz / ids.length).sd < 0.35;
+  };
   for (let i = 0; i < steps; i++) {
-    for (let r = 0; r < rows.length - 1; r++) {
-      const a = i * stride + r;
+    const ring = 1 + i * stride;
+    const next = 1 + (i + 1) * stride;
+    triUp(positions, indices, 0, next, ring);
+    for (let r = 0; r < rings.length - 1; r++) {
+      const a = ring + r;
       const b = a + 1;
-      const c = (i + 1) * stride + r;
+      const c = next + r;
       const d = c + 1;
+      if (riverGap(a, b, c, d)) continue;
       quad(positions, indices, a, b, c, d);
     }
   }
   return { positions, indices, colors };
+}
+
+function lakeDisc(): { positions: number[]; indices: number[]; uvs: number[] } {
+  const steps = 72;
+  const positions = [LAKE.x, LAKE_LEVEL, LAKE.z];
+  const uvs = [0.5, 0.5];
+  const indices: number[] = [];
+  const rad = LAKE.r - 0.04;
+  for (let i = 0; i <= steps; i++) {
+    const a = (i / steps) * Math.PI * 2;
+    positions.push(LAKE.x + Math.cos(a) * rad, LAKE_LEVEL, LAKE.z + Math.sin(a) * rad);
+    uvs.push(0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5);
+  }
+  for (let i = 0; i < steps; i++) indices.push(0, 1 + i, 2 + i);
+  return { positions, indices, uvs };
 }
 
 /** A private ripple, stronger than the oasis tile, so the current reads at a glance. */
@@ -586,6 +740,42 @@ function currentMaps(scene: Scene): { diffuse: DynamicTexture; bump: DynamicText
   return { diffuse, bump };
 }
 
+/** DynamicTexture.clone does not copy pixels, so each current gets its own stamp. */
+function stampTexture(scene: Scene, name: string, source: DynamicTexture): DynamicTexture {
+  const size = source.getSize();
+  const copy = new DynamicTexture(name, { width: size.width, height: size.height }, scene, false);
+  const src = source.getContext() as unknown as CanvasRenderingContext2D;
+  const dst = copy.getContext() as unknown as CanvasRenderingContext2D;
+  dst.putImageData(src.getImageData(0, 0, size.width, size.height), 0, 0);
+  copy.update(false);
+  copy.wrapU = copy.wrapV = Texture.WRAP_ADDRESSMODE;
+  copy.anisotropicFilteringLevel = 8;
+  copy.updateSamplingMode(Texture.TRILINEAR_SAMPLINGMODE);
+  return copy;
+}
+
+function waterMaterial(scene: Scene, name: string, diffuse: DynamicTexture, bump: DynamicTexture): StandardMaterial {
+  bump.level = 0.45;
+  const mat = new StandardMaterial(name, scene);
+  mat.diffuseTexture = diffuse;
+  mat.bumpTexture = bump;
+  mat.diffuseColor = new Color3(0.72, 0.84, 0.88);
+  mat.specularColor = new Color3(0.92, 0.95, 0.96);
+  mat.specularPower = 28;
+  mat.emissiveColor = new Color3(0.05, 0.12, 0.14);
+  mat.useSpecularOverAlpha = true;
+  mat.alpha = 0.66;
+  mat.transparencyMode = Material.MATERIAL_ALPHABLEND;
+  mat.backFaceCulling = false;
+  mat.zOffset = -2;
+  return mat;
+}
+
+/** Meters of texture scroll per second. Steeper water moves faster; the lake barely stirs. */
+function currentSpeed(slope: number): number {
+  return 0.012 + slope * 1.15;
+}
+
 export interface EdenWaters {
   meshes: Mesh[];
   lamp: PointLight;
@@ -594,63 +784,53 @@ export interface EdenWaters {
 
 export function buildEdenRivers(scene: Scene): EdenWaters {
   const ripple = currentMaps(scene);
-  ripple.bump.level = 0.45;
-  const waterMat = new StandardMaterial("eden-water", scene);
-  waterMat.diffuseTexture = ripple.diffuse;
-  waterMat.bumpTexture = ripple.bump;
-  waterMat.diffuseColor = new Color3(0.72, 0.84, 0.88);
-  waterMat.specularColor = new Color3(0.92, 0.95, 0.96);
-  waterMat.specularPower = 28;
-  waterMat.emissiveColor = new Color3(0.05, 0.12, 0.14);
-  waterMat.useSpecularOverAlpha = true;
-  waterMat.alpha = 0.66;
-  waterMat.transparencyMode = Material.MATERIAL_ALPHABLEND;
-  waterMat.backFaceCulling = false;
-  waterMat.zOffset = -2;
+  const flows: { diffuse: DynamicTexture; bump: DynamicTexture; speed: number }[] = [];
+  const meshes: Mesh[] = [];
 
-  const positions: number[] = [];
-  const indices: number[] = [];
-  const uvs: number[] = [];
+  const lakeMat = waterMaterial(scene, "eden-water-lake", ripple.diffuse, ripple.bump);
+  lakeMat.alpha = 0.74;
+  lakeMat.zOffset = -4;
+  const lake = new Mesh("water-lake", scene);
+  const disc = lakeDisc();
   for (const course of COURSES) {
-    const ribbon = buildRibbon(course);
-    const base = positions.length / 3;
-    positions.push(...ribbon.positions);
-    uvs.push(...ribbon.uvs);
-    for (const index of ribbon.indices) indices.push(index + base);
+    const bay = outletBay(course);
+    const base = disc.positions.length / 3;
+    disc.positions.push(...bay.positions);
+    disc.uvs.push(...bay.uvs);
+    for (const index of bay.indices) disc.indices.push(index + base);
   }
-  const springSteps = 40;
-  const springBase = positions.length / 3;
-  const sy = surfaceY(SPRING.x, SPRING.z);
-  positions.push(SPRING.x, sy, SPRING.z);
-  uvs.push(0.5, 0.5);
-  for (let i = 0; i <= springSteps; i++) {
-    const a = (i / springSteps) * Math.PI * 2;
-    positions.push(SPRING.x + Math.cos(a) * SPRING.r, sy, SPRING.z + Math.sin(a) * SPRING.r);
-    uvs.push(0.5 + Math.cos(a) * 0.5, 0.5 + Math.sin(a) * 0.5);
-  }
-  for (let i = 0; i < springSteps; i++) {
-    indices.push(springBase, springBase + 1 + i, springBase + 2 + i);
-  }
+  applyMesh(lake, disc.positions, disc.indices, disc.uvs);
+  lake.material = lakeMat;
+  flows.push({ diffuse: ripple.diffuse, bump: ripple.bump, speed: currentSpeed(0) });
+  meshes.push(lake);
 
-  const water = new Mesh("water", scene);
-  applyMesh(water, positions, indices, uvs);
-  water.material = waterMat;
+  for (const course of COURSES) {
+    const diffuse = stampTexture(scene, `eden-current-diff-${course.name}`, ripple.diffuse);
+    const bump = stampTexture(scene, `eden-current-bump-${course.name}`, ripple.bump);
+    const mat = waterMaterial(scene, `eden-water-${course.name}`, diffuse, bump);
+    const ribbon = buildRibbon(course);
+    const mesh = new Mesh(`water-${course.name}`, scene);
+    applyMesh(mesh, ribbon.positions, ribbon.indices, ribbon.uvs);
+    mesh.material = mat;
+    flows.push({ diffuse, bump, speed: currentSpeed(course.slope) });
+    meshes.push(mesh);
+  }
 
   const bankPos: number[] = [];
   const bankIdx: number[] = [];
   const bankCol: number[] = [];
   COURSES.forEach((course, index) => {
-    const bank = buildBank(course, 0.028 + index * 0.006);
+    const bank = buildBank(course, 0.045 + index * 0.004);
     const base = bankPos.length / 3;
     bankPos.push(...bank.positions);
     bankCol.push(...bank.colors);
-    for (const index of bank.indices) bankIdx.push(index + base);
+    for (const i of bank.indices) bankIdx.push(i + base);
   });
-  const ring = springRing();
-  const ringBase = bankPos.length / 3;
-  bankPos.push(...ring.positions);
-  bankCol.push(...ring.colors);
-  for (const index of ring.indices) bankIdx.push(index + ringBase);
+  const bowl = lakeBowl();
+  const bowlBase = bankPos.length / 3;
+  bankPos.push(...bowl.positions);
+  bankCol.push(...bowl.colors);
+  for (const i of bowl.indices) bankIdx.push(i + bowlBase);
   const bankMat = new StandardMaterial("eden-bank", scene);
   bankMat.diffuseColor = new Color3(1, 1, 1);
   bankMat.specularColor = new Color3(0.04, 0.04, 0.03);
@@ -659,79 +839,43 @@ export function buildEdenRivers(scene: Scene): EdenWaters {
   const bank = new Mesh("cover-bank", scene);
   applyMesh(bank, bankPos, bankIdx, undefined, bankCol);
   bank.material = bankMat;
-
-  const upwellingMat = new StandardMaterial("eden-upwelling", scene);
-  upwellingMat.diffuseColor = new Color3(0.62, 0.86, 0.95);
-  upwellingMat.emissiveColor = new Color3(0.28, 0.52, 0.62);
-  upwellingMat.specularColor = new Color3(0.9, 0.95, 1);
-  upwellingMat.specularPower = 32;
-  upwellingMat.alpha = 0.62;
-  upwellingMat.transparencyMode = Material.MATERIAL_ALPHABLEND;
-  upwellingMat.backFaceCulling = false;
-  const upwelling = MeshBuilder.CreateCylinder(
-    "water-spring",
-    { height: 0.48, diameterTop: 0.28, diameterBottom: 3.1, tessellation: 20 },
-    scene,
-  );
-  upwelling.position.set(SPRING.x, sy + 0.22, SPRING.z);
-  upwelling.material = upwellingMat;
-
-  const wispMat = new StandardMaterial("eden-wisp", scene);
-  wispMat.diffuseColor = new Color3(0.75, 0.9, 1);
-  wispMat.emissiveColor = new Color3(0.35, 0.55, 0.7);
-  wispMat.specularColor = new Color3(0, 0, 0);
-  wispMat.alpha = 0.28;
-  wispMat.transparencyMode = Material.MATERIAL_ALPHABLEND;
-  wispMat.backFaceCulling = false;
-  const wisps: Mesh[] = [];
-  for (let i = 0; i < 5; i++) {
-    const a = (i / 5) * Math.PI * 2;
-    const wisp = MeshBuilder.CreatePlane("water-wisp", { width: 0.28, height: 1.5 }, scene);
-    wisp.position.set(SPRING.x + Math.cos(a) * 0.7, sy + 0.95, SPRING.z + Math.sin(a) * 0.7);
-    wisp.rotation.y = -a;
-    wisp.material = wispMat;
-    wisps.push(wisp);
-  }
+  meshes.push(bank);
 
   const stones: Mesh[] = [];
-  const stoneMat = new StandardMaterial("eden-spring-stone", scene);
+  const stoneMat = new StandardMaterial("eden-shore-stone", scene);
   stoneMat.diffuseColor = new Color3(0.55, 0.5, 0.42);
   stoneMat.specularColor = new Color3(0.08, 0.07, 0.06);
-  for (let i = 0; i < 11; i++) {
-    const a = (i / 11) * Math.PI * 2 + 0.2;
-    const rad = SPRING.r + 1.15 + (i % 3) * 0.28;
-    const sx = SPRING.x + Math.cos(a) * rad;
-    const sz = SPRING.z + Math.sin(a) * rad;
-    const rock = MeshBuilder.CreateSphere("eden-spring-stone", { diameter: 0.55 + (i % 3) * 0.18, segments: 5 }, scene);
-    rock.position.set(sx, bedHeight(sx, sz) + 0.16, sz);
-    rock.scaling.set(1.15, 0.55, 0.9);
+  for (let i = 0; i < 16; i++) {
+    const a = (i / 16) * Math.PI * 2 + 0.2;
+    const rad = LAKE.r + 1.45 + (i % 4) * 0.22;
+    const sx = LAKE.x + Math.cos(a) * rad;
+    const sz = LAKE.z + Math.sin(a) * rad;
+    if (waterSigned(sx, sz) < 0.9 || flatZone(sx, sz)) continue;
+    const rock = MeshBuilder.CreateSphere("eden-shore-stone", { diameter: 0.48 + (i % 3) * 0.16, segments: 5 }, scene);
+    rock.position.set(sx, bedHeight(sx, sz) + 0.14, sz);
+    rock.scaling.set(1.15, 0.52, 0.9);
     rock.material = stoneMat;
     stones.push(rock);
   }
+  meshes.push(...stones);
 
-  const lamp = new PointLight("spring-light", new Vector3(SPRING.x, 1.35, SPRING.z), scene);
+  const lamp = new PointLight("lake-light", new Vector3(LAKE.x, 2.4, LAKE.z), scene);
   lamp.diffuse = new Color3(0.62, 0.82, 1);
-  lamp.specular = new Color3(0.45, 0.6, 0.7);
-  lamp.intensity = 0.42;
-  lamp.range = 18;
+  lamp.specular = new Color3(0.4, 0.55, 0.65);
+  lamp.intensity = 0.55;
+  lamp.range = 28;
 
   let clock = 0;
   const tick = (dt: number, time: number) => {
     clock += dt;
-    ripple.bump.uOffset = clock * 0.07;
-    ripple.diffuse.uOffset = clock * 0.045;
-    ripple.bump.vOffset = Math.sin(clock * 0.35) * 0.02;
-    upwelling.scaling.y = 1 + Math.sin(time * 1.6) * 0.12;
-    upwelling.position.y = sy + 0.2 + Math.sin(time * 1.6) * 0.04;
-    for (let i = 0; i < wisps.length; i++) {
-      const a = (i / wisps.length) * Math.PI * 2 + clock * 0.35;
-      wisps[i].position.x = SPRING.x + Math.cos(a) * 0.72;
-      wisps[i].position.z = SPRING.z + Math.sin(a) * 0.72;
-      wisps[i].position.y = sy + 0.85 + Math.sin(time * 2 + i) * 0.08;
-      wisps[i].rotation.y = -a;
+    for (const flow of flows) {
+      // U grows downstream, and raising uOffset slides the pattern the other way.
+      flow.bump.uOffset = -clock * flow.speed;
+      flow.diffuse.uOffset = -clock * flow.speed * 0.62;
+      flow.bump.vOffset = Math.sin(clock * 0.35) * 0.012;
     }
-    lamp.intensity = 0.4 + Math.sin(time * 1.3) * 0.05;
+    lamp.intensity = 0.5 + Math.sin(time * 0.7) * 0.04;
   };
 
-  return { meshes: [water, bank, upwelling, ...wisps, ...stones], lamp, tick };
+  return { meshes, lamp, tick };
 }

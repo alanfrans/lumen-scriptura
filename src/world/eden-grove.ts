@@ -10,6 +10,7 @@ import {
 } from "@babylonjs/core";
 import type { Palette, RGB } from "../art/materials";
 import { EDEN_PLACEMENTS } from "../data/layout";
+import { LAKE } from "./eden-rivers";
 
 /**
  * Extra planting for the garden of Genesis 2.
@@ -1063,7 +1064,15 @@ export function plantEdenGrove(scene: Scene, pal: Palette, ground: EdenGround): 
     return [a.x + dx * t + (-dz / len) * side * off, a.z + dz * t + (dx / len) * side * off];
   };
   const inGlade = (x: number, z: number) =>
-    Math.hypot(x - 4, z - 17) < 7.4 || Math.hypot(x - 22, z - 22) < 9.2 || Math.hypot(x, z - 78) < 7.5;
+    Math.hypot(x - 4, z - 17) < 7.4 || Math.hypot(x - LAKE.x, z - LAKE.z) < LAKE.r + 4.2 || Math.hypot(x, z - 78) < 7.5;
+  const alongShore = (): [number, number] => {
+    if (rand() < 0.46) {
+      const a = rand() * Math.PI * 2;
+      const rad = LAKE.r + 1.55 + rand() * 1.65;
+      return [LAKE.x + Math.cos(a) * rad, LAKE.z + Math.sin(a) * rad];
+    }
+    return alongBank();
+  };
   const anyPlant = (): [number, number] => {
     const u = rand();
     if (u < 0.46) return disc(4, 26, 40, 80);
@@ -1277,7 +1286,7 @@ export function plantEdenGrove(scene: Scene, pal: Palette, ground: EdenGround): 
     }
   };
   carpet(4, 17, 5.2, 7.5, 96);
-  carpet(22, 22, 9.5, 12.4, 80);
+  carpet(LAKE.x, LAKE.z, LAKE.r + 2.7, LAKE.r + 6.2, 110);
 
   const beds: [number, number][] = [];
   for (let i = 0; i < 520 && beds.length < 58; i++) {
@@ -1330,7 +1339,7 @@ export function plantEdenGrove(scene: Scene, pal: Palette, ground: EdenGround): 
     const s = span(0.85, 1.4);
     grasses[rand() < 0.58 ? 0 : 1].place(x, z, spin(), s, yOf(x, z), 0, 0, s * span(0.75, 1.35));
   });
-  sprinkle(170, "reed", 2.15, alongBank, (x, z) => {
+  sprinkle(170, "reed", 2.15, alongShore, (x, z) => {
     const s = span(0.9, 1.3);
     reeds[rand() < 0.5 ? 0 : 1].place(x, z, spin(), s, yOf(x, z), (rand() - 0.5) * 0.05, (rand() - 0.5) * 0.05, s * span(0.9, 1.2));
   });
