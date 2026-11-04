@@ -22,21 +22,36 @@ import { buildPerson, type Rig } from "./art/models";
 import { Sky } from "./art/sky";
 import { heightAt } from "./world/terrain";
 import { setLatitude } from "./art/heavens";
-import { blockReason, CARRY_LIMIT, holdsShut, NEAR_REACH, type RuleQuery } from "./challenge/rules";
+import { ruleBrief, sealCopy } from "./challenge/brief";
+import {
+  answerWords,
+  approachFrame,
+  canPay,
+  canTrade,
+  chapterAfterRoad,
+  completedBookCount,
+  payFor,
+  roadIsOpen,
+  shortPurse,
+  tradeFor,
+} from "./challenge/engine";
+import { CARRY_LIMIT, COMPANION_SPEED, COMPANION_STAND, holdsShut, QUIET_SECONDS, type RuleQuery } from "./challenge/rules";
 import { verseQuiz } from "./challenge/words";
 import { CANON_LEVELS, GENESIS_CHAPTERS, GENESIS_VERSES, TORAH_VERSES } from "./data/canon";
-import { chapterKey, chapterSpec, nextChapter } from "./data/chapters";
-import { PLACE_EDEN, placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
-import { compareVerseIds, PLACE_JORDAN_HILLS, verseId } from "./data/identity";
+import { chapterKey, chapterSpec, nextChapter, type ChapterSpec } from "./data/chapters";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
+import { BOOK_GENESIS, compareVerseIds, PLACE_JORDAN_HILLS, verseId } from "./data/identity";
 import { CURRENT_LEVEL } from "./data/levels";
 import { PLACEMENTS, type Placement } from "./data/layout";
+import type { OwnedVerse, Purse } from "./data/play";
 import { chapterPlacements, chapterTexts } from "./data/reading";
 import { Hud } from "./hud";
 import { clearState, loadState, saveState, STIPEND_PERIOD, type SaveState } from "./save";
 import { resolveCircle } from "./world/collision";
-import { EDEN_PATH } from "./world/eden";
+import { EDEN_EAST, EDEN_PATH } from "./world/eden";
+import { FALL_GATE, FALL_WEST } from "./world/fall";
 import { loadPlace } from "./world/place";
-import { EAST_PATH, LECTERN } from "./world/south-road";
+import { EAST_PATH, NORTH_PATH } from "./world/south-road";
 import { VerseLights } from "./world/verses";
 import {
   CHAPEL,
@@ -56,7 +71,6 @@ const WALK = 7;
 const SPRINT = 11;
 const RIDE = 17;
 const STIPEND_AMOUNT = 20;
-const VERSE_PRICE = 30;
 const INTERACT_RANGE = 3.2;
 /** One full day and night. Night is about half of this. */
 const DAY_LENGTH = 20 * 60;
@@ -217,6 +231,9 @@ export class Game {
       this.player.position.set(at.x, this.world.heightAt(at.x, at.z), at.z);
       this.mounted = false;
       this.playerRig.setSeated(false);
+    } else {
+      const standing = this.player.position;
+      standing.y = this.world.heightAt(standing.x, standing.z);
     }
     this.layVerses();
     this.setupShadows();
@@ -304,15 +321,22 @@ export class Game {
     horse.root.position.set(x, this.world.heightAt(x, z), z);
   }
 
-  /** The title card is the valley until a save is already standing in the garden. */
+  /** The title card is the valley until a save is already standing in a later scene. */
   private retitle(): void {
-    if (this.state.place !== PLACE_EDEN) return;
     const sub = document.querySelector<HTMLElement>("#title .sub");
-    if (sub) sub.textContent = "Genesis 2 · The garden of Eden";
     const blurb = sub?.parentElement?.querySelector<HTMLElement>("p:not(.sub)");
-    if (blurb) {
-      blurb.textContent =
-        "The garden planted eastward in Eden holds the twenty-five verses of Genesis 2. They open in order, from the threshold of the seventh day to the north end of the grove. Adam keeps the garden and knows where each one rests.";
+    if (this.state.place === PLACE_EDEN) {
+      if (sub) sub.textContent = "Genesis 2 · The garden of Eden";
+      if (blurb) {
+        blurb.textContent =
+          "The garden planted eastward in Eden holds the twenty-five verses of Genesis 2. They open in order, from the threshold of the seventh day to the north end of the grove. Adam keeps the garden and knows where each one rests.";
+      }
+    } else if (this.state.place === PLACE_EAST_OF_EDEN) {
+      if (sub) sub.textContent = "Genesis 3 · East of Eden";
+      if (blurb) {
+        blurb.textContent =
+          "East of the garden, the twenty-four verses of Genesis 3 wait for the cool of the day. They open in the evening, in any order, from the serpent's tree to the flaming sword. Adam hides among the trees and knows where each one rests.";
+      }
     }
   }
 
@@ -347,6 +371,11 @@ export class Game {
     this.canvas.focus();
     if (this.state.place === PLACE_EDEN) {
       this.hud.toast("Genesis 2 is planted here. The first verse is north of you. Adam knows the rest.");
+      return;
+    }
+    if (this.state.place === PLACE_EAST_OF_EDEN) {
+      this.camera.alpha = Math.PI;
+      this.hud.toast("Genesis 3 is east of the garden. The verses open in the evening. Adam is among the trees.");
       return;
     }
     if (this.state.place === PLACE_JORDAN_HILLS && !this.state.metMiriam) {
@@ -551,7 +580,7 @@ export class Game {
       npc.animate(dt, 0);
     }
     for (const rig of w.folk) {
-      const following = rig.root.name === "joel" && this.state.guideFollows;
+      const following = this.companionName() === rig.root.name && this.state.guideFollows;
       const r = rig.root;
       if (!following && distXZ(r.position, pp) < 8) {
         r.rotation.y = turnToward(r.rotation.y, Math.atan2(pp.x - r.position.x, pp.z - r.position.z), dt * 3);
@@ -646,37 +675,53 @@ export class Game {
   }
 
   private updateGuide(dt: number): void {
-    const joel = this.world.folk.find((rig) => rig.root.name === "joel");
-    if (!joel || !this.state.guideFollows) {
+    const name = this.companionName();
+    const guide = name ? this.world.folk.find((rig) => rig.root.name === name) : undefined;
+    if (!guide || !this.state.guideFollows) {
       this.guideSpeed = 0;
       return;
     }
-    const pos = joel.root.position;
+    const pos = guide.root.position;
     const pp = this.player.position;
     const d = distXZ(pos, pp);
-    const stand = 1.05;
-    if (d <= stand + 0.05) {
+    if (d <= COMPANION_STAND + 0.05) {
       this.guideSpeed = 0;
       return;
     }
-    const step = Math.min(3.2 * dt, d - stand);
+    const step = Math.min(COMPANION_SPEED * dt, d - COMPANION_STAND);
     const next = { x: pos.x + ((pp.x - pos.x) / d) * step, z: pos.z + ((pp.z - pos.z) / d) * step };
     resolveCircle(next, 0.4, this.world.colliders, false);
     pos.x = next.x;
     pos.y = this.world.heightAt(next.x, next.z);
     pos.z = next.z;
-    joel.root.rotation.y = Math.atan2(pp.x - pos.x, pp.z - pos.z);
+    guide.root.rotation.y = Math.atan2(pp.x - pos.x, pp.z - pos.z);
     this.guideSpeed = step / Math.max(dt, 0.001);
   }
 
   private beaconHere(place: string): boolean {
-    if (place === PLACE_JORDAN_HILLS) return this.state.sealed || this.state.sealedChapters.includes("genesis.1");
-    const spec = chapterSpec(this.state.book, this.state.chapter);
+    if (place === PLACE_JORDAN_HILLS) return this.state.sealedChapters.includes(chapterKey(BOOK_GENESIS, 1));
+    const spec = this.spec();
     return spec.place === place && this.state.sealedChapters.includes(chapterKey(spec.book, spec.chapter));
   }
 
-  private chapterRules() {
-    return chapterSpec(this.state.book, this.state.chapter).rules;
+  private spec(): ChapterSpec {
+    return chapterSpec(this.state.book, this.state.chapter);
+  }
+
+  /** Companion for the chapter being walked, and only while the Seeker is standing in that chapter's place. */
+  private companionName(): string | undefined {
+    const spec = this.spec();
+    if (spec.place !== this.state.place) return undefined;
+    return spec.companion;
+  }
+
+  private purse(): Purse {
+    return { coin: this.state.coin, hasJar: this.state.hasJar };
+  }
+
+  private applyPurse(next: Purse): void {
+    this.state.coin = next.coin;
+    this.state.hasJar = next.hasJar;
   }
 
   private spots(): readonly Placement[] {
@@ -698,7 +743,7 @@ export class Game {
       has: (n) => this.has(n),
       day: this.day,
       witness: this.nearestWitness(at),
-      hour: chapterSpec(this.state.book, this.state.chapter).hour,
+      hour: this.spec().hour,
     };
   }
 
@@ -712,83 +757,95 @@ export class Game {
 
   /** Verses a rule keeps dim, no matter who is standing there. */
   private shutVerses(): Set<number> {
-    const rules = this.chapterRules();
+    const spec = this.spec();
     const shut = new Set<number>();
-    if (chapterSpec(this.state.book, this.state.chapter).place !== this.state.place) return shut;
+    if (spec.place !== this.state.place) return shut;
     for (const p of this.spots()) {
       if (this.has(p.verse) || this.state.carried.includes(this.vid(p.verse))) continue;
-      if (holdsShut(rules, this.query(p.verse, 0, p))) shut.add(p.verse);
+      if (holdsShut(spec.rules, this.query(p.verse, 0, p))) shut.add(p.verse);
     }
     return shut;
   }
 
+  private verseOwned(spec: ChapterSpec, verse: number, placementOwner?: string): boolean {
+    return !!placementOwner || !!spec.owned?.some((item) => item.verse === verse);
+  }
+
   private checkVerses(): void {
-    const pp = this.player.position;
-    const rules = this.chapterRules();
-    let hint: string | null = null;
-    let hintDist = 8;
-    if (chapterSpec(this.state.book, this.state.chapter).place !== this.state.place) {
+    const spec = this.spec();
+    if (spec.place !== this.state.place) {
       this.ruleHint = null;
       return;
     }
-    for (const p of this.spots()) {
-      if (this.has(p.verse) || this.state.carried.includes(this.vid(p.verse))) continue;
-      const d = distXZ(p, pp);
-      if (p.owner) {
-        if (d < 3 && this.time > this.ownedNoticeAt) {
-          this.hud.toast("This verse belongs to Tobias. Talk to him about it.");
-          this.ownedNoticeAt = this.time + 8;
-        }
-        continue;
-      }
-      const q = this.query(p.verse, d, p);
-      const hold = holdsShut(rules, q);
-      if (hold) {
-        if (d < hintDist) {
-          hint = hold;
-          hintDist = d;
-        }
-        continue;
-      }
-      if (blockReason(rules, q)) continue;
-      if (d < NEAR_REACH && this.time >= this.wordsQuiet) this.takeVerse(p);
+    const pp = this.player.position;
+    const frame = approachFrame({
+      rules: spec.rules,
+      hour: spec.hour,
+      day: this.day,
+      has: (verse) => this.has(verse),
+      arms: this.state.carried.length,
+      quiet: this.time < this.wordsQuiet,
+      spots: this.spots().map((p) => ({
+        verse: p.verse,
+        distance: distXZ(p, pp),
+        witness: this.nearestWitness(p),
+        owned: this.verseOwned(spec, p.verse, p.owner),
+        collected: this.has(p.verse),
+        carried: this.state.carried.includes(this.vid(p.verse)),
+      })),
+    });
+    this.ruleHint = frame.prompt;
+    if (frame.owned != null && this.time > this.ownedNoticeAt) {
+      const owned = spec.owned?.find((item) => item.verse === frame.owned);
+      this.hud.toast(owned?.notice ?? "This verse belongs to someone. Talk to them about it.");
+      this.ownedNoticeAt = this.time + 8;
     }
-    this.ruleHint = hint;
-  }
-
-  private takeVerse(p: Placement): void {
-    const rules = this.chapterRules();
-    if (rules.includes("words")) return this.askWords(p);
-    if (rules.includes("carry")) return this.liftVerse(p);
-    this.commitVerse(p.verse);
+    for (const take of frame.takes) {
+      const spot = this.spots().find((p) => p.verse === take.verse);
+      if (!spot) continue;
+      if (take.action === "quiz") this.askWords(spot);
+      else if (take.action === "lift") this.liftVerse(spot);
+      else if (take.action === "arms-full") this.armsFull();
+      else this.commitVerse(spot.verse);
+    }
   }
 
   private askWords(p: Placement): void {
-    const text = chapterTexts(this.state.chapter)[p.verse - 1];
-    const quiz = verseQuiz(text, p.verse);
+    const texts = chapterTexts(this.state.chapter);
+    const text = texts[p.verse - 1];
+    const quiz = verseQuiz(text, p.verse, texts);
+    const spec = this.spec();
     this.hud.openDialog(
       `Genesis ${this.state.chapter}:${p.verse}`,
       quiz.stem || "Finish the line.",
       quiz.choices.map((choice) => ({
         label: choice.text,
         onPick: () => {
-          if (!choice.right) {
-            this.wordsQuiet = this.time + 2.5;
+          const answer = answerWords(spec.rules, this.query(p.verse, 0, p), choice.right, this.state.carried.length);
+          if (answer.action === "wrong") {
+            this.wordsQuiet = this.time + QUIET_SECONDS;
             this.hud.toast("That is not how the line ends.");
             return;
           }
+          if (answer.action === "shut") {
+            this.hud.toast(answer.reason);
+            return;
+          }
+          if (answer.action === "arms-full") return this.armsFull();
+          if (answer.action === "lift") return this.liftVerse(p);
           this.commitVerse(p.verse);
         },
       })),
     );
   }
 
+  private armsFull(): void {
+    this.wordsQuiet = this.time + QUIET_SECONDS;
+    this.hud.toast("Your arms are full. Set these verses on the lectern.");
+  }
+
   private liftVerse(p: Placement): void {
-    if (this.state.carried.length >= CARRY_LIMIT) {
-      this.wordsQuiet = this.time + 2.5;
-      this.hud.toast("Your arms are full. Set these verses on the lectern.");
-      return;
-    }
+    if (this.state.carried.length >= CARRY_LIMIT) return this.armsFull();
     this.state.carried.push(this.vid(p.verse));
     this.lights.remove(p.verse);
     this.hud.toast(`You carry verse ${p.verse}. Set it on the lectern.`);
@@ -879,12 +936,48 @@ export class Game {
         act: () => this.walkBetween(PLACE_SOUTH_ROAD, "Two days west. The south-road camp is ahead."),
       });
     }
-    if (joel && this.chapterRules().includes("carry")) {
+    const playing = this.spec();
+    const onFall = playing.place === PLACE_EAST_OF_EDEN;
+    const fallNext = this.state.chapter === 2 && this.state.sealedChapters.includes("genesis.2");
+    if (this.state.place === PLACE_EDEN && (this.state.chapter === 2 || onFall)) {
+      list.push({
+        label: "Take the eastward path",
+        ...EDEN_EAST,
+        act: () => {
+          if (!onFall && !this.state.sealedChapters.includes("genesis.2")) {
+            this.hud.toast("Genesis 2 is still being gathered. The way east opens when the chapter is whole.");
+            return;
+          }
+          this.walkBetween(PLACE_EAST_OF_EDEN, "Two days east. You arrive at dawn, where the verses open in the evening.");
+        },
+      });
+    }
+    if (this.state.place === PLACE_SOUTH_ROAD && (onFall || fallNext)) {
+      list.push({
+        label: "Take the path east of Eden",
+        ...NORTH_PATH,
+        act: () => this.walkBetween(PLACE_EAST_OF_EDEN, "Two days east. You arrive at dawn, where the verses open in the evening."),
+      });
+    }
+    if (this.state.place === PLACE_EAST_OF_EDEN) {
+      list.push({
+        label: "Take the westward path to the garden",
+        ...FALL_WEST,
+        act: () => this.walkBetween(PLACE_EDEN, "Two days west. The garden of Eden is ahead."),
+      });
+    }
+    if (playing.place === this.state.place && playing.rules.includes("carry") && playing.lectern) {
       list.push({
         label: this.state.carried.length ? "Set the verses on the lectern" : "The lectern",
-        ...LECTERN,
+        x: playing.lectern.x,
+        z: playing.lectern.z,
         act: () => this.fileCarried(),
       });
+    }
+    const companion = this.companionName();
+    if (companion && companion !== "joel") {
+      const rig = w.folk.find((person) => person.root.name === companion);
+      if (rig) list.push(npc(`Talk to ${companion}`, rig, () => this.talkCompanion()));
     }
     if (w.door && !s.doorOpen) {
       list.push({
@@ -1012,7 +1105,9 @@ export class Game {
         who,
         spec.place === PLACE_EDEN
           ? "Genesis 2 is in the garden of Eden. Press M and take the south road. From that camp, a path runs east to the garden."
-          : `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
+          : spec.place === PLACE_EAST_OF_EDEN
+            ? "Genesis 3 is east of the garden of Eden. Press M and take the south road. From that camp, a path runs north. The verses open in the evening."
+            : `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
       );
       return;
     }
@@ -1109,42 +1204,77 @@ export class Game {
   }
 
   private talkTobias(): void {
-    const s = this.state;
-    const who = "Tobias the collector";
-    if (this.has(31)) {
-      this.hud.openDialog(who, "It's yours now, and rightly. Carry it farther than my tent ever could.");
+    const ownerChapter = chapterSpec(BOOK_GENESIS, 1);
+    const owned = ownerChapter.owned?.find((item) => item.owner === "tobias");
+    if (!owned) {
+      this.hud.openDialog("Tobias the collector", "I have nothing for a Seeker today.");
       return;
     }
-    let text =
-      "Ah, a Seeker. I hold verse thirty-one. 'Very good,' it says, and so is my price: thirty coin. Or... I've long wanted a clay jar from the old wells at the oasis. Bring me one and we'll call it even.";
-    if (!s.hasJar && s.coin < VERSE_PRICE) {
-      text += " No coin? Your stipend comes every week. I'm a patient man.";
+    const id = verseId(ownerChapter.book, ownerChapter.chapter, owned.verse);
+    if (this.collected.has(id)) {
+      this.hud.openDialog(owned.speaker, owned.sold);
+      return;
     }
-    this.hud.openDialog(who, text, [
-      {
-        label: `Pay ${VERSE_PRICE} coin (you have ${s.coin})`,
-        disabled: s.coin < VERSE_PRICE,
+    if (this.state.book !== ownerChapter.book || this.state.chapter !== ownerChapter.chapter) {
+      this.hud.openDialog(owned.speaker, owned.pitch);
+      return;
+    }
+    this.talkOwner(owned);
+  }
+
+  /** A verse held by someone else. The price and the trade come from the chapter. */
+  private talkOwner(owned: OwnedVerse): void {
+    if (this.has(owned.verse)) {
+      this.hud.openDialog(owned.speaker, owned.sold);
+      return;
+    }
+    const purse = this.purse();
+    let text = owned.pitch;
+    if (owned.shortPurse && shortPurse(owned, purse)) text += owned.shortPurse;
+    const options: { label: string; disabled?: boolean; onPick: () => void }[] = [];
+    if (owned.price != null) {
+      options.push({
+        label: `Pay ${owned.price} coin (you have ${purse.coin})`,
+        disabled: !canPay(owned, purse),
         onPick: () => {
-          s.coin -= VERSE_PRICE;
-          this.collect(31);
+          const next = payFor(owned, this.purse());
+          if (next) this.buyOwned(owned, next);
         },
-      },
-      {
-        label: "Trade the clay jar",
-        disabled: !s.hasJar,
+      });
+    }
+    if (owned.tradeItem) {
+      options.push({
+        label: owned.tradeLabel ?? "Make the trade",
+        disabled: !canTrade(owned, purse),
         onPick: () => {
-          s.hasJar = false;
-          this.collect(31);
+          const next = tradeFor(owned, this.purse());
+          if (next) this.buyOwned(owned, next);
         },
-      },
-      { label: "Leave", onPick: () => {} },
-    ]);
+      });
+    }
+    options.push({ label: "Leave", onPick: () => {} });
+    this.hud.openDialog(owned.speaker, text, options);
+  }
+
+  /** Spend the purse, then give it back if a shut rule refuses the verse. */
+  private buyOwned(owned: OwnedVerse, next: Purse): void {
+    const previous = this.purse();
+    this.applyPurse(next);
+    if (!this.commitVerse(owned.verse)) this.applyPurse(previous);
   }
 
   private talkAdam(): void {
+    if (this.state.place === PLACE_EAST_OF_EDEN) {
+      this.talkAdamFallen();
+      return;
+    }
     const who = "Adam, keeper of the garden";
+    if (chapterSpec(this.state.book, this.state.chapter).place === PLACE_EAST_OF_EDEN) {
+      this.hud.openDialog(who, "Genesis 3 is not in this garden. The path east leads to the cool of the day. The verses open in the evening.");
+      return;
+    }
     if (this.chapterHave() === this.chapterTotal()) {
-      this.hud.openDialog(who, "The chapter is whole. Every verse of the garden is in your Codex.");
+      this.hud.openDialog(who, "The chapter is whole. Every verse of the garden is in your Codex. The way east leaves this garden. Genesis 3 opens there, in the evening.");
       return;
     }
     const intro = "genesis.2.0";
@@ -1161,7 +1291,41 @@ export class Game {
     if (target) this.verseHint(who, target);
   }
 
+  private talkAdamFallen(): void {
+    const who = "Adam";
+    if (this.chapterHave() === this.chapterTotal()) {
+      this.hud.openDialog(who, "The chapter is whole. Every verse of the fall is in your Codex. The path west returns to the garden.");
+      return;
+    }
+    const intro = "genesis.3.0";
+    if (this.chapterHave() === 0 && !this.state.hintRungs[intro]) {
+      this.state.hintRungs[intro] = 1;
+      this.persist();
+      this.hud.openDialog(
+        who,
+        "We heard the voice in the cool of the day, and we hid. Twenty-four verses of Genesis 3 lie on this ground. They open in the evening, and any of them may be taken once that light is up. The serpent's tree is west of here.",
+      );
+      return;
+    }
+    const spec = this.spec();
+    if (spec.rules.includes("hour") && holdsShut(spec.rules, this.query(1, 0, this.player.position))) {
+      this.hud.openDialog(who, "The verses are still shut. They open in the evening, in the cool of the day. Wait, and the columns will answer.");
+      return;
+    }
+    const target = this.nearestUncollected();
+    if (target) this.verseHint(who, target);
+  }
+
   private talkEve(): void {
+    if (this.state.place === PLACE_EAST_OF_EDEN) {
+      const line = this.has(13)
+        ? "The serpent beguiled me, and I did eat."
+        : this.has(7)
+          ? "We sewed fig leaves together. Then the voice walked the garden in the cool of the day."
+          : "The serpent was more subtil than any beast of the field.";
+      this.hud.openDialog("Eve", line);
+      return;
+    }
     const who = "Eve";
     const line = this.has(25)
       ? "We were not ashamed."
@@ -1171,8 +1335,33 @@ export class Game {
     this.hud.openDialog(who, line);
   }
 
+  private followOptions(name: string): { label: string; onPick: () => void }[] {
+    const spec = this.spec();
+    if (!spec.rules.includes("witness") || spec.companion !== name || this.state.guideFollows) return [];
+    if (spec.place !== this.state.place) return [];
+    const spoken = name === "joel" ? "Joel" : name;
+    return [
+      {
+        label: "Walk with me",
+        onPick: () => {
+          this.state.guideFollows = true;
+          this.persist();
+          this.hud.toast(`${spoken} walks with you.`);
+        },
+      },
+      { label: "Not now", onPick: () => {} },
+    ];
+  }
+
+  /** A companion who is not Joel. Joel keeps the road talk; the rules he states are the same brief. */
+  private talkCompanion(): void {
+    const spec = this.spec();
+    const name = spec.companion ?? "Companion";
+    this.hud.openDialog(name, ruleBrief(spec, this.state.guideFollows), this.followOptions(name));
+  }
+
   private talkJoel(): void {
-    const spec = chapterSpec(this.state.book, this.state.chapter);
+    const spec = this.spec();
     const next = nextChapter(this.state.book, this.state.chapter);
     const who = "Joel, keeper of the south road";
     if (next && next.place === this.state.place && this.state.sealedChapters.includes(chapterKey(this.state.book, this.state.chapter))) {
@@ -1182,6 +1371,13 @@ export class Game {
       ]);
       return;
     }
+    if (this.state.chapter === 2 && this.state.sealedChapters.includes("genesis.2") && this.state.place === PLACE_SOUTH_ROAD) {
+      this.hud.openDialog(
+        who,
+        "Genesis 2 is in the Codex. Genesis 3 lies east of the garden, and the verses open in the evening. A path leaves the north side of the camp.",
+      );
+      return;
+    }
     if (spec.place === PLACE_EDEN && this.state.place !== PLACE_EDEN) {
       this.hud.openDialog(
         who,
@@ -1189,41 +1385,18 @@ export class Game {
       );
       return;
     }
+    if (spec.place === PLACE_EAST_OF_EDEN && this.state.place !== PLACE_EAST_OF_EDEN) {
+      this.hud.openDialog(
+        who,
+        "Genesis 3 is not in this camp. It is the ground east of the garden, and the verses open in the evening. The path leaves the north side of the camp.",
+      );
+      return;
+    }
     if (spec.place !== this.state.place) {
       this.hud.openDialog(who, `Genesis ${this.state.chapter} is at ${placeById(spec.place).name}. Press M, and take the road.`);
       return;
     }
-    const bits: string[] = [];
-    if (spec.rules.includes("order")) bits.push("Take them in order. The first verse of the chapter opens the next.");
-    if (spec.rules.includes("hour")) bits.push(`These verses open in the ${spec.hour?.label ?? "evening"}.`);
-    if (spec.rules.includes("witness")) {
-      bits.push(
-        this.state.guideFollows
-          ? "I'm with you. Stand close to a verse, and I will stand close too."
-          : "These verses stay shut unless someone stands with you.",
-      );
-    }
-    if (spec.rules.includes("words")) bits.push("Read the ending carefully. Only one of the three lines is the verse.");
-    if (spec.rules.includes("carry")) bits.push("The lectern is west of the fire. Carry a verse there. Three at a time.");
-    if (!bits.length) bits.push("Press M when you want the way back to the valley.");
-    const follow = spec.rules.includes("witness") && !this.state.guideFollows;
-    this.hud.openDialog(
-      who,
-      bits.join(" "),
-      follow
-        ? [
-            {
-              label: "Walk with me",
-              onPick: () => {
-                this.state.guideFollows = true;
-                this.persist();
-                this.hud.toast("Joel walks with you.");
-              },
-            },
-            { label: "Not now", onPick: () => {} },
-          ]
-        : [],
-    );
+    this.hud.openDialog(who, ruleBrief(spec, this.state.guideFollows), this.followOptions("joel"));
   }
 
   private showTravel(): void {
@@ -1231,9 +1404,10 @@ export class Game {
     const hop = hops[0];
     if (!hop) {
       if (this.state.place === PLACE_EDEN) this.hud.toast("The path south returns to the camp. The garden is not on this map.");
+      else if (this.state.place === PLACE_EAST_OF_EDEN) this.hud.toast("The path west returns to the garden. This ground is not on this map.");
       return;
     }
-    if (this.state.place === PLACE_JORDAN_HILLS && !this.state.sealed) {
+    if (!roadIsOpen(this.state.place, this.state.sealedChapters)) {
       this.hud.toast("The south road opens when Genesis 1 is in the codex.");
       return;
     }
@@ -1269,20 +1443,21 @@ export class Game {
     const dest = this.travelDest;
     const hop = roadsFrom(this.state.place).find((item) => item.destination.id === dest);
     if (!hop) return this.hideTravel();
-    if (this.state.place === PLACE_JORDAN_HILLS && !this.state.sealed) return this.hideTravel();
+    if (!roadIsOpen(this.state.place, this.state.sealedChapters)) return this.hideTravel();
     this.mounted = false;
     this.playerRig.setSeated(false);
     this.state.placeAt[this.state.place] = { x: this.player.position.x, z: this.player.position.z };
     this.state.elapsedDays += hop.road.days;
     this.day = 0.32;
-    if (dest === PLACE_SOUTH_ROAD && this.state.chapter === 1 && this.state.sealedChapters.includes("genesis.1")) {
-      this.state.chapter = 2;
-    }
+    this.state.chapter = chapterAfterRoad(this.state.place, dest, this.state.chapter, this.state.sealedChapters);
     this.hideTravel();
     this.goToPlace(dest, true);
     this.hud.toast(`${hop.road.days} days on the road. You arrive at dawn.`);
     if (dest === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EDEN) {
       this.hud.toast("Genesis 2 is east of this camp. The path leaves past the sign.");
+    }
+    if (dest === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EAST_OF_EDEN) {
+      this.hud.toast("Genesis 3 is east of the garden. The path leaves the north side of the camp, and the verses open in the evening.");
     }
     this.persist();
   }
@@ -1294,7 +1469,9 @@ export class Game {
     this.state.placeAt[this.state.place] = { x: this.player.position.x, z: this.player.position.z };
     this.state.elapsedDays += 2;
     this.day = 0.32;
+    this.state.chapter = chapterAfterRoad(this.state.place, id, this.state.chapter, this.state.sealedChapters);
     this.goToPlace(id, true);
+    if (id === PLACE_EAST_OF_EDEN) this.camera.alpha = Math.PI;
     this.hud.toast(toast);
     this.persist();
   }
@@ -1306,25 +1483,25 @@ export class Game {
     return verseId(this.state.book, this.state.chapter, verse);
   }
 
+  /** Codex only. A verse in the arms does not count, and does not open the next one. */
   private has(verse: number): boolean {
     return this.collected.has(this.vid(verse));
   }
 
-  private collect(verse: number): void {
-    this.commitVerse(verse);
-  }
-
-  private commitVerse(verse: number): void {
+  /** False when a shut rule still refuses. The caller keeps the coin or the trade in that case. */
+  private commitVerse(verse: number): boolean {
     const id = this.vid(verse);
-    if (this.collected.has(id)) return;
-    const hold = holdsShut(this.chapterRules(), this.query(verse, 0, this.player.position));
+    if (this.collected.has(id)) return false;
+    const at = this.spots().find((p) => p.verse === verse) ?? this.player.position;
+    const hold = holdsShut(this.spec().rules, this.query(verse, 0, at));
     if (hold) {
       this.hud.toast(hold);
-      return;
+      return false;
     }
     this.collected.add(id);
     this.state.carried = this.state.carried.filter((carried) => carried !== id);
     this.finishTake([verse]);
+    return true;
   }
 
   private fileCarried(): void {
@@ -1382,24 +1559,15 @@ export class Game {
   private sealChapter(): void {
     const key = chapterKey(this.state.book, this.state.chapter);
     if (!this.state.sealedChapters.includes(key)) this.state.sealedChapters.push(key);
+    // Kept beside the chapter key so a save from before the seal list still reads as sealed.
     if (this.state.chapter === 1) this.state.sealed = true;
     if (this.beaconHere(this.state.place)) this.raiseBeacon();
     const next = nextChapter(this.state.book, this.state.chapter);
-    const here = next?.place === this.state.place;
-    const nextLine =
-      next == null
-        ? ""
-        : here
-          ? ` Genesis ${next.chapter} is here in the camp whenever you are ready.`
-          : ` Genesis ${next.chapter} is at ${placeById(next.place).name}.${
-              this.state.place === PLACE_EDEN && next.place === PLACE_SOUTH_ROAD ? " The path back leaves to the south." : ""
-            }`;
+    const copy = sealCopy(this.spec(), next, this.state.place);
     this.hud.openDialog(
       `Chapter sealed: Genesis ${this.state.chapter}`,
-      this.state.chapter === 1
-        ? "All thirty-one verses are in your Codex. A Hope Beacon rises over the Ruined Arch. The south road is open: press M when you are ready to leave the valley. This chapter counts toward Genesis, the Torah, and all three canon levels: the Hebrew Bible, the Protestant Bible, and the Catholic Bible. Press C to see your Codex."
-        : `Genesis ${this.state.chapter} is in the Codex.${nextLine}`,
-      here && next
+      copy.body,
+      copy.offerNext && next
         ? [{ label: `Begin Genesis ${next.chapter}`, onPick: () => this.beginChapter(next) }, { label: "Not yet", onPick: () => {} }]
         : [],
     );
@@ -1410,6 +1578,7 @@ export class Game {
     const b = MeshBuilder.CreateCylinder("beacon", { height: 140, diameter: 5, tessellation: 24 }, this.scene);
     this.beacon = b;
     if (this.state.place === PLACE_EDEN) b.position.set(4, 70, 16);
+    else if (this.state.place === PLACE_EAST_OF_EDEN) b.position.set(FALL_GATE.x, 70, FALL_GATE.z);
     else b.position.set(0, 70, this.state.place === PLACE_JORDAN_HILLS ? -25 : -2);
     const m = new StandardMaterial("beacon-mat", this.scene);
     m.emissiveColor = new Color3(1, 0.96, 0.85);
@@ -1458,6 +1627,7 @@ export class Game {
     const chapterHave = this.chapterHave();
     const chapterTotal = this.chapterTotal();
     const chapters = this.state.sealedChapters.length;
+    const books = completedBookCount(this.state.sealedChapters, [{ id: BOOK_GENESIS, chapters: GENESIS_CHAPTERS }]);
     const bar = (have: number, total: number) =>
       `<div class="bar"><span style="width:${Math.max(0.6, (have / total) * 100)}%"></span></div>`;
     const row = (name: string, detail: string, have: number, total: number) =>
@@ -1466,7 +1636,7 @@ export class Game {
     const levels = CANON_LEVELS.map((l) =>
       row(
         `Level ${l.label} · ${l.name}`,
-        `${fmt(n)} / ${fmt(l.verses)} verses · ${chapters} / ${fmt(l.chapters)} chapters · 0 / ${l.books} books`,
+        `${fmt(n)} / ${fmt(l.verses)} verses · ${chapters} / ${fmt(l.chapters)} chapters · ${books} / ${l.books} books`,
         n,
         l.verses,
       ),

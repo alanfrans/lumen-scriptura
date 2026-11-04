@@ -1,6 +1,8 @@
 # Game rules
 
-Design for what the player does, finishes, and collects in each chapter that exists in `src/data`. This is the document the follow-up todo ("Work out how to implement the chapter rules in code") should implement. It does not add a rule system.
+Design for what the player does, finishes, and collects in each chapter that exists in `src/data`. The rule system that plays this design is [rule-system.md](rule-system.md).
+
+Where this document says a correct `words` answer collects the verse before it is carried, that was the old `takeVerse`. The system finishes the line, then carries it, on the chapters that list both.
 
 The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GENESIS_VERSES`). Two places exist (`src/data/era.ts`):
 
@@ -230,10 +232,10 @@ When the 31st verse lands, Hope is full, the beacon rises, and the map road can 
 ### Genesis 3 — In the evening
 
 - **Passage.** Genesis 3. The serpent, the fruit, and the expulsion from the garden. Verse 8: they hear the LORD God walking in the garden in the cool of the day. 24 verses, `genesis.3.1`–`genesis.3.24`.
-- **Place.** `south-road`.
+- **Place.** `east-of-eden`. The way in is the east path of the garden once Genesis 2 is sealed, or the north path of the camp. Both set the clock to dawn and begin this chapter.
 - **Rules.** `["near", "hour"]` with the evening window (15:36 through midnight to 04:48). The whole chapter uses one window. Verse 8 is not gated on its own.
-- **What the player does.** Be at a tablet while the clock is in the evening. At dawn, which is how the road delivers the Seeker, every column stays shut. Joel says "These verses open in the evening." The Seeker can walk the ring and learn the ground while waiting. When the window opens, any tablet can be taken in any order, by walking up.
-- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. Joel then offers Genesis 4.
+- **What the player does.** Be at a tablet while the clock is in the evening. At dawn, which is how either path delivers the Seeker, every column stays shut. Adam says the verses open in the evening. The Seeker can walk the ground while waiting. When the window opens, any tablet can be taken in any order, by walking up.
+- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. The path west returns to the garden. Joel offers Genesis 4 once the Seeker is back at the camp.
 - **Collected.** The 24 verses.
 - **Failure and retry.** Outside the window the refusal is "This verse opens in the evening." No verse is lost if the window closes after it was collected. A quiz is not involved, so the dialog-versus-clock edge case does not come up. The wait is the whole of the retry.
 - **Passage tie.** The authored window matches the cool of the day, when the voice walks the garden, rather than the morning the road arrives in. Morning is the time these verses stay shut.

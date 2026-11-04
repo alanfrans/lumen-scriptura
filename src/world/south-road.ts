@@ -3,13 +3,14 @@ import type { Palette } from "../art/materials";
 import { createTexture } from "../art/textures";
 import { buildPerson } from "../art/models";
 import type { Box } from "./collision";
+import { SOUTH_ROAD_LECTERN as LECTERN } from "../data/play";
 import type { World } from "./world";
-
-/** Where carried verses are set down. */
-export const LECTERN = { x: -8, z: -6 };
 
 /** The east side of the camp, where the path to the garden of Eden leaves. */
 export const EAST_PATH = { x: 26, z: 2.2 };
+
+/** North along the road, where the path east of Eden leaves once Genesis 2 is sealed. */
+export const NORTH_PATH = { x: 4.6, z: 48 };
 
 /** A small camp past the south edge of the valley map. Flat ground, one road north. */
 export function buildSouthRoad(scene: Scene, pal: Palette): World {
@@ -143,6 +144,14 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
     step.position.set(x, 0.04, 2.2);
     step.material = stone;
   }
+
+  const northPost = keep(MeshBuilder.CreateBox("north-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  northPost.position.set(NORTH_PATH.x, 0.85, NORTH_PATH.z);
+  northPost.material = wood;
+  const northBoard = keep(MeshBuilder.CreateBox("north-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  northBoard.position.set(NORTH_PATH.x, 1.55, NORTH_PATH.z);
+  northBoard.material = wood;
+  solid(NORTH_PATH.x, NORTH_PATH.z, 0.5, 0.5);
 
   const lectern = keep(MeshBuilder.CreateBox("lectern", { width: 0.7, height: 0.9, depth: 0.55 }, scene));
   lectern.position.set(LECTERN.x, 0.45, LECTERN.z);

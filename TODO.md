@@ -4,7 +4,7 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 
 ## Graphics
 - [x] Make graphics more detailed and realistic (terrain, characters, props, lighting, textures) — https://github.com/alanfrans/lumen-scriptura/pull/3
-- [ ] Fix the chopped-up look on palm tree trunks (smooth/fix trunk rendering after the procedural wood albedo/normals from the graphics pass)
+- [x] Fix the chopped-up look on palm tree trunks (smooth/fix trunk rendering after the procedural wood albedo/normals from the graphics pass) — https://github.com/alanfrans/lumen-scriptura/pull/5
 
 ## Eden polish
 - [x] Add more bushes and filler vegetation in the Eden (Genesis 2) scene
@@ -12,11 +12,11 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 
 ## Game rules
 - [x] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter) (https://github.com/alanfrans/lumen-scriptura/pull/1)
-- [ ] Work out how to implement the chapter rules in code (rule system/architecture), then implement them
+- [x] Work out how to implement the chapter rules in code (rule system/architecture), then implement them — https://github.com/alanfrans/lumen-scriptura/pull/7
 
 ## Scenes (the next 9 chapters after the last chapter that has a scene)
 - [x] Build the scene for next chapter #1 (Genesis 2) — https://github.com/alanfrans/lumen-scriptura/pull/2
-- [ ] Build the scene for next chapter #2
+- [x] Build the scene for next chapter #2 (Genesis 3) — https://github.com/alanfrans/lumen-scriptura/pull/6
 - [ ] Build the scene for next chapter #3
 - [ ] Build the scene for next chapter #4
 - [ ] Build the scene for next chapter #5
