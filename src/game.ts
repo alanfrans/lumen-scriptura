@@ -283,7 +283,8 @@ export class Game {
     csm.setDarkness(0.45);
     for (const m of this.scene.meshes) {
       if (/^(verse|beacon|sky|sun|moon|star|planet|milky|water|ground|camera-anchor|folk|beast)/.test(m.name)) continue;
-      csm.addShadowCaster(m, false);
+      // Meadow cover is thin-instanced and dense. It takes shade from the trees and does not cast.
+      if (!m.name.startsWith("cover-")) csm.addShadowCaster(m, false);
       m.receiveShadows = true;
     }
     this.world.ground.receiveShadows = true;

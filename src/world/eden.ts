@@ -2,6 +2,7 @@ import { Color3, DynamicTexture, Mesh, MeshBuilder, Scene, StandardMaterial } fr
 import type { Palette, RGB } from "../art/materials";
 import { buildBeast, buildPerson, type BeastKind, type Rig } from "../art/models";
 import { EDEN_PLACEMENTS } from "../data/layout";
+import { plantEdenGrove } from "./eden-grove";
 import type { Wanderer, World } from "./world";
 
 /** South of the planted garden, where the path back to the camp is taken. */
@@ -384,7 +385,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
   box(64.2, 0.28, 45.2, 0.55, 0.45, 0.32, onyx, true);
   box(64.2, 0.42, 45.2, 0.57, 0.08, 0.34, onyxBand);
 
-  for (const [x0, z0, x1, z1] of STREAMS) {
+  for (const [x0, z0, x1, z1, width] of STREAMS) {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const len = Math.hypot(dx, dz);
@@ -395,14 +396,15 @@ export function buildEden(scene: Scene, pal: Palette): World {
       const cz = z0 + dz * t;
       if (Math.hypot(cx - SPRING.x, cz - SPRING.z) < SPRING.r + 1.5) continue;
       const side = i % 2 === 0 ? 1 : -1;
-      const ox = (-dz / len) * side * (1.8 + (i % 3) * 0.25);
-      const oz = (dx / len) * side * (1.8 + (i % 3) * 0.25);
+      const bank = width / 2 + 1.7 + (i % 3) * 0.4;
+      const ox = (-dz / len) * side * bank;
+      const oz = (dx / len) * side * bank;
       const x = cx + ox;
       const z = cz + oz;
-      if (!clear(x, z, 3.2)) continue;
-      const h = 0.9 + rand() * 0.7;
-      const reed = cyl(x, h / 2, z, h, 0.02, 0.055, shrub, 5);
-      reed.rotation.z = (rand() - 0.5) * 0.3;
+      if (!clear(x, z, 3.2) || pathDist(x, z) < 2.8) continue;
+      const h = 1.15 + rand() * 0.7;
+      const reed = cyl(x, h / 2, z, h, 0.04, 0.085, shrub, 5);
+      reed.rotation.z = (rand() - 0.5) * 0.22;
     }
   }
 
@@ -480,6 +482,14 @@ export function buildEden(scene: Scene, pal: Palette): World {
     merged?.freezeWorldMatrix();
     if (merged) scenery.push(merged);
   }
+  scenery.push(
+    ...plantEdenGrove(scene, pal, {
+      waterDist,
+      pathDist,
+      streams: STREAMS,
+      solidTrunk: (x, z) => solidBox(x, z, 0.6, 0.6),
+    }),
+  );
 
   const folk: Rig[] = [];
   const wanderers: Wanderer[] = [];
@@ -554,5 +564,6 @@ export function buildEden(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
+    lamps: [],
   };
 }
