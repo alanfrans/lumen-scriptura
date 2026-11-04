@@ -3,6 +3,16 @@ import type { Palette, RGB } from "../art/materials";
 import { buildBeast, buildPerson, type BeastKind, type Rig } from "../art/models";
 import { EDEN_PLACEMENTS } from "../data/layout";
 import { plantEdenGrove } from "./eden-grove";
+import {
+  bedHeight,
+  BENDS,
+  buildEdenRivers,
+  COURSES,
+  displaceEdenGround,
+  pathDist,
+  waterDist,
+  waterSigned,
+} from "./eden-rivers";
 import type { Wanderer, World } from "./world";
 
 /** South of the planted garden, where the path back to the camp is taken. */
@@ -11,23 +21,6 @@ export const EDEN_PATH = { x: 0, z: -76 };
 /** East of the planting, where the way out toward Genesis 3 leaves. */
 export const EDEN_EAST = { x: 80, z: 6.4 };
 
-const SPRING = { x: 22, z: 22, r: 3.3 };
-
-/** The river that waters the garden, then the four heads: Pison, Gihon, Hiddekel, Euphrates. */
-const STREAMS: readonly [number, number, number, number, number][] = [
-  [16, 18, 0, 8, 1.5],
-  [22, 22, 60, 48, 2.5],
-  [22, 22, 54, 4, 2.2],
-  [22, 22, 74, 26, 2.1],
-  [22, 22, 24, 64, 2.3],
-];
-
-const WALK: readonly [number, number][] = [
-  [0, -86],
-  [0, -66],
-  ...EDEN_PLACEMENTS.map((p) => [p.x, p.z] as [number, number]),
-];
-
 function rng(seed: number): () => number {
   return () => {
     seed = (seed + 0x6d2b79f5) | 0;
@@ -35,14 +28,6 @@ function rng(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function distSeg(x: number, z: number, ax: number, az: number, bx: number, bz: number): number {
-  const dx = bx - ax;
-  const dz = bz - az;
-  const len2 = dx * dx + dz * dz;
-  const t = len2 < 1e-6 ? 0 : Math.min(1, Math.max(0, ((x - ax) * dx + (z - az) * dz) / len2));
-  return Math.hypot(x - (ax + dx * t), z - (az + dz * t));
 }
 
 function mix(a: RGB, b: RGB, t: number): RGB {
@@ -54,24 +39,6 @@ function smooth(a: number, b: number, x: number): number {
   return t * t * (3 - 2 * t);
 }
 
-function waterDist(x: number, z: number): number {
-  let best = Math.max(0, Math.hypot(x - SPRING.x, z - SPRING.z) - SPRING.r);
-  for (const [ax, az, bx, bz, width] of STREAMS) {
-    best = Math.min(best, Math.max(0, distSeg(x, z, ax, az, bx, bz) - width / 2));
-  }
-  return best;
-}
-
-function pathDist(x: number, z: number): number {
-  let best = 999;
-  for (let i = 1; i < WALK.length; i++) {
-    const [ax, az] = WALK[i - 1];
-    const [bx, bz] = WALK[i];
-    best = Math.min(best, distSeg(x, z, ax, az, bx, bz));
-  }
-  return best;
-}
-
 /** Grass in the planting, dust in the field, sand at the sabbath court, and the four rivers. */
 function edenColor(x: number, z: number): RGB {
   const garden = Math.hypot(x - 2, z - 16);
@@ -81,11 +48,14 @@ function edenColor(x: number, z: number): RGB {
   if (x > 44 && z > 30) c = mix(c, [186, 156, 78], smooth(44, 58, x) * smooth(30, 42, z));
   const rim = Math.hypot(x, z - 8);
   if (rim > 78) c = mix(c, [132, 122, 78], smooth(78, 120, rim));
-  const bank = waterDist(x, z);
-  if (bank < 5) c = mix(c, [58, 92, 64], 1 - smooth(1.2, 5, bank));
+  const sd = waterSigned(x, z);
+  if (sd < 2.9) {
+    const mud: RGB = [86, 68, 42];
+    const wet: RGB = [42, 74, 46];
+    c = sd < 0 ? mix(mud, [32, 52, 48], smooth(-1.2, 0, sd)) : mix(mud, mix(wet, c, smooth(0.3, 2.9, sd)), smooth(0.15, 2.6, sd));
+  }
   const worn = pathDist(x, z);
-  if (worn < 2.6 && bank > 1.1) c = mix(c, [138, 112, 72], 1 - smooth(1.1, 2.6, worn));
-  if (bank < 1.15) c = mix([42, 96, 112], [28, 72, 88], smooth(0, 1.15, bank));
+  if (worn < 2.6 && sd > 0.35) c = mix(c, [138, 112, 72], 1 - smooth(1.1, 2.6, worn));
   return c;
 }
 
@@ -114,6 +84,8 @@ function paintEden(scene: Scene): StandardMaterial {
   const mat = new StandardMaterial("eden-ground", scene);
   mat.diffuseTexture = tex;
   mat.specularColor = new Color3(0.04, 0.04, 0.03);
+  mat.backFaceCulling = false;
+  mat.twoSidedLighting = true;
   return mat;
 }
 
@@ -127,7 +99,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
   const colliders: { minX: number; maxX: number; minZ: number; maxZ: number; solid: boolean }[] = [];
   const statics: Mesh[] = [];
   const rand = rng(202);
-  const heightAt = () => 0;
+  const heightAt = bedHeight;
 
   const solidBox = (x: number, z: number, w: number, d: number) => {
     for (const p of EDEN_PLACEMENTS) {
@@ -193,8 +165,9 @@ export function buildEden(scene: Scene, pal: Palette): World {
   const capGreen = pal.mat("eden-cap-green", [0.2, 0.36, 0.24]);
   const capBlue = pal.mat("eden-cap-blue", [0.28, 0.4, 0.5]);
 
-  const ground = MeshBuilder.CreateGround("ground", { width: 360, height: 360, subdivisions: 2 }, scene);
+  const ground = MeshBuilder.CreateGround("ground", { width: 360, height: 360, subdivisions: 180, updatable: true }, scene);
   ground.material = paintEden(scene);
+  displaceEdenGround(ground);
 
   const clear = (x: number, z: number, r: number) =>
     EDEN_PLACEMENTS.every((p) => Math.hypot(p.x - x, p.z - z) >= r) &&
@@ -337,32 +310,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
   cyl(17.2, 0.7, 8.6, 0.9, 0.05, 0.05, darkWood, 5);
   box(17.2, 1.15, 8.6, 0.34, 0.08, 0.16, darkWood, false, 0.4);
 
-  // River, spring, and the four heads.
-  const waterMat = new StandardMaterial("eden-water", scene);
-  waterMat.diffuseColor = new Color3(0.16, 0.4, 0.5);
-  waterMat.specularColor = new Color3(0.55, 0.58, 0.58);
-  waterMat.specularPower = 48;
-  waterMat.emissiveColor = new Color3(0.02, 0.05, 0.07);
-  waterMat.alpha = 0.9;
-  const waters: Mesh[] = [];
-  const wet = (mesh: Mesh) => {
-    mesh.material = waterMat;
-    waters.push(mesh);
-    return mesh;
-  };
-  const pool = wet(MeshBuilder.CreateCylinder("spring", { height: 0.08, diameter: SPRING.r * 2, tessellation: 28 }, scene));
-  pool.position.set(SPRING.x, 0.05, SPRING.z);
-  for (const [x0, z0, x1, z1, width] of STREAMS) {
-    const dx = x1 - x0;
-    const dz = z1 - z0;
-    const len = Math.hypot(dx, dz);
-    const ribbon = wet(MeshBuilder.CreateBox("river", { width, height: 0.06, depth: len }, scene));
-    ribbon.position.set((x0 + x1) / 2, 0.045, (z0 + z1) / 2);
-    ribbon.rotation.y = Math.atan2(dx, dz);
-  }
-  const river = waters.length > 1 ? Mesh.MergeMeshes(waters, true, true) : waters[0];
-  if (!river) throw new Error("The rivers of Eden failed to build");
-  river.name = "water";
+  const rivers = buildEdenRivers(scene);
 
   const head = (x: number, z: number, cap: StandardMaterial) => {
     cyl(x, 0.7, z, 1.4, 0.55, 0.7, stone, 10);
@@ -388,29 +336,6 @@ export function buildEden(scene: Scene, pal: Palette): World {
   ball(64.4, 0.16, 47.5, 0.28, amber, 5);
   box(64.2, 0.28, 45.2, 0.55, 0.45, 0.32, onyx, true);
   box(64.2, 0.42, 45.2, 0.57, 0.08, 0.34, onyxBand);
-
-  for (const [x0, z0, x1, z1, width] of STREAMS) {
-    const dx = x1 - x0;
-    const dz = z1 - z0;
-    const len = Math.hypot(dx, dz);
-    const steps = Math.floor(len / 4);
-    for (let i = 1; i < steps; i++) {
-      const t = i / steps;
-      const cx = x0 + dx * t;
-      const cz = z0 + dz * t;
-      if (Math.hypot(cx - SPRING.x, cz - SPRING.z) < SPRING.r + 1.5) continue;
-      const side = i % 2 === 0 ? 1 : -1;
-      const bank = width / 2 + 1.7 + (i % 3) * 0.4;
-      const ox = (-dz / len) * side * bank;
-      const oz = (dx / len) * side * bank;
-      const x = cx + ox;
-      const z = cz + oz;
-      if (!clear(x, z, 3.2) || pathDist(x, z) < 2.8) continue;
-      const h = 1.15 + rand() * 0.7;
-      const reed = cyl(x, h / 2, z, h, 0.04, 0.085, shrub, 5);
-      reed.rotation.z = (rand() - 0.5) * 0.22;
-    }
-  }
 
   // Naming ground and the grove of sleep.
   for (let i = 0; i < 5; i++) {
@@ -483,7 +408,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
     list.push(mesh);
     groups.set(key, list);
   }
-  const scenery: Mesh[] = [river];
+  const scenery: Mesh[] = [...rivers.meshes];
   for (const list of groups.values()) {
     const merged = list.length > 1 ? Mesh.MergeMeshes(list, true, true) : list[0];
     merged?.freezeWorldMatrix();
@@ -493,7 +418,9 @@ export function buildEden(scene: Scene, pal: Palette): World {
     ...plantEdenGrove(scene, pal, {
       waterDist,
       pathDist,
-      streams: STREAMS,
+      courses: COURSES,
+      bends: BENDS,
+      heightAt,
       solidTrunk: (x, z) => solidBox(x, z, 0.6, 0.6),
     }),
   );
@@ -501,7 +428,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
   const folk: Rig[] = [];
   const wanderers: Wanderer[] = [];
   const placeRig = (rig: Rig, x: number, z: number, faceY = 0) => {
-    rig.root.position.set(x, 0, z);
+    rig.root.position.set(x, heightAt(x, z), z);
     rig.root.rotation.y = faceY;
     return rig;
   };
@@ -535,12 +462,12 @@ export function buildEden(scene: Scene, pal: Palette): World {
 
   const pace = (kind: BeastKind, ax: number, az: number, bx: number, bz: number, rate: number) => {
     const rig = buildBeast(scene, pal, `beast-${kind}-${wanderers.length}`, kind);
-    rig.root.position.set(ax, 0, az);
+    rig.root.position.set(ax, heightAt(ax, az), az);
     wanderers.push({ rig, ax, az, bx, bz, phase: rand() * 6, rate });
   };
   const sit = (kind: BeastKind, x: number, z: number, face = 0) => {
     const rig = buildBeast(scene, pal, `beast-${kind}-${folk.length}`, kind);
-    rig.root.position.set(x, 0, z);
+    rig.root.position.set(x, heightAt(x, z), z);
     rig.root.rotation.y = face;
     folk.push(rig);
   };
@@ -571,7 +498,7 @@ export function buildEden(scene: Scene, pal: Palette): World {
     wanderers,
     scenery,
     heightAt,
-    // No lamps of its own. Leaving the garden still disposes this list.
-    lamps: [],
+    lamps: [rivers.lamp],
+    tick: rivers.tick,
   };
 }
