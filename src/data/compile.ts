@@ -1,4 +1,4 @@
-import type { HourWindow, RuleId } from "../challenge/rules";
+import { HOUR_EVENING, HOUR_MORNING, HOUR_NIGHT, type HourWindow, type RuleId } from "../challenge/rules";
 
 export interface CompiledChapter {
   book: string;
@@ -7,10 +7,6 @@ export interface CompiledChapter {
   rules: readonly RuleId[];
   hour?: HourWindow;
 }
-
-const MORNING: HourWindow = { from: 0.25, to: 0.55, label: "morning" };
-const EVENING: HourWindow = { from: 0.65, to: 0.2, label: "evening" };
-const NIGHT: HourWindow = { from: 0.75, to: 0.28, label: "night" };
 
 /** Order is the leftover. The others are chosen when the chapter's words ask for them. */
 const ROTATION: readonly RuleId[] = ["order", "hour", "witness", "words", "carry"];
@@ -62,9 +58,9 @@ export function compileChapter(
     const morning = count(text, /\b(morning|dawn)\b/g);
     const night = count(text, /\b(night|darkness|midnight)\b/g);
     const evening = count(text, /\b(evening|even)\b/g);
-    if (morning > evening && morning >= night) hour = MORNING;
-    else if (night > evening) hour = NIGHT;
-    else hour = EVENING;
+    if (morning > evening && morning >= night) hour = HOUR_MORNING;
+    else if (night > evening) hour = HOUR_NIGHT;
+    else hour = HOUR_EVENING;
   }
   return { book, chapter, place, rules, hour };
 }
