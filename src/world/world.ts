@@ -1,4 +1,4 @@
-import { Color3, Light, Mesh, MeshBuilder, PointLight, Scene, StandardMaterial, Vector3 } from "@babylonjs/core";
+import { Color3, Light, Mesh, MeshBuilder, PointLight, Scene, StandardMaterial, Vector3, VertexData } from "@babylonjs/core";
 import type { Palette, RGB } from "../art/materials";
 import { createTexture } from "../art/textures";
 import { buildBeast, buildHorse, buildPerson, type BeastKind, type PersonLook, type Rig } from "../art/models";
@@ -72,6 +72,139 @@ const JAR_SHAPE = [
   [0.1, 0.82],
   [0.15, 0.87],
 ].map(([r, y]) => new Vector3(r, y, 0));
+
+function rotateAround(v: Vector3, axis: Vector3, angle: number): Vector3 {
+  const c = Math.cos(angle);
+  const s = Math.sin(angle);
+  return v.scale(c).add(Vector3.Cross(axis, v).scale(s)).add(axis.scale(Vector3.Dot(axis, v) * (1 - c)));
+}
+
+function perpendicular(tangent: Vector3): Vector3 {
+  const axis = Math.abs(tangent.y) < 0.85 ? Vector3.Up() : Vector3.Right();
+  return Vector3.Cross(tangent, axis).normalize();
+}
+
+/**
+ * One trunk, from just under the soil to the crown.
+ * The old trunk was six capped cylinders. Each joint stepped the radius and
+ * showed a cut face, and the wood normal map lit those faces as chops.
+ * UVs run once around and continuously up, at the same density the wood tile used.
+ */
+function buildPalmTrunk(scene: Scene, baseX: number, baseY: number, baseZ: number, crownX: number, crownY: number, crownZ: number): Mesh {
+  const bury = 0.3;
+  const steps = 22;
+  const tess = 16;
+  const path: Vector3[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const bend = t * t;
+    path.push(
+      new Vector3(
+        baseX + (crownX - baseX) * bend,
+        baseY - bury + (crownY - (baseY - bury)) * t,
+        baseZ + (crownZ - baseZ) * bend,
+      ),
+    );
+  }
+  const radiusAt = (t: number) => {
+    const taper = 0.19 + (0.11 - 0.19) * t;
+    // A short flare where the trunk meets the ground, gone before the crown.
+    let r = taper + Math.exp(-t * 11) * 0.04;
+    // Roll the shoulder over so the crown is a tip, not a cut face.
+    if (t > 0.84) {
+      const u = (t - 0.84) / 0.16;
+      r *= 0.16 + 0.84 * Math.cos(Math.min(1, u) * Math.PI * 0.5);
+    }
+    return r;
+  };
+  const tangents: Vector3[] = [];
+  for (let i = 0; i < path.length; i++) {
+    const prev = path[Math.max(0, i - 1)];
+    const next = path[Math.min(path.length - 1, i + 1)];
+    tangents.push(next.subtract(prev).normalize());
+  }
+  const frames: { n: Vector3; b: Vector3; t: Vector3 }[] = [];
+  let normal = perpendicular(tangents[0]);
+  let binormal = Vector3.Cross(tangents[0], normal).normalize();
+  normal = Vector3.Cross(binormal, tangents[0]).normalize();
+  frames.push({ n: normal, b: binormal, t: tangents[0] });
+  for (let i = 1; i < path.length; i++) {
+    const from = tangents[i - 1];
+    const to = tangents[i];
+    const axis = Vector3.Cross(from, to);
+    const sin = axis.length();
+    if (sin > 1e-5) {
+      axis.scaleInPlace(1 / sin);
+      normal = rotateAround(normal, axis, Math.atan2(sin, Vector3.Dot(from, to)));
+    }
+    binormal = Vector3.Cross(to, normal).normalize();
+    normal = Vector3.Cross(binormal, to).normalize();
+    frames.push({ n: normal, b: binormal, t: to });
+  }
+
+  const radii = path.map((_, i) => radiusAt(i / steps));
+  const positions: number[] = [];
+  const normals: number[] = [];
+  const uvs: number[] = [];
+  const indices: number[] = [];
+  const stride = tess + 1;
+  let climbed = 0;
+  const climbedAt = [0];
+  for (let i = 1; i < path.length; i++) climbedAt.push((climbed += Vector3.Distance(path[i - 1], path[i])));
+  // Each old segment was 1.12 m of v in 0..1. The material still repeats that tile twice.
+  const tile = 1.12;
+
+  for (let i = 0; i < path.length; i++) {
+    const i0 = Math.max(0, i - 1);
+    const i1 = Math.min(path.length - 1, i + 1);
+    const slope = (radii[i1] - radii[i0]) / (Vector3.Distance(path[i0], path[i1]) || 1);
+    const { n, b, t } = frames[i];
+    const r = radii[i];
+    for (let j = 0; j <= tess; j++) {
+      const a = (j / tess) * Math.PI * 2;
+      const rx = n.x * Math.cos(a) + b.x * Math.sin(a);
+      const ry = n.y * Math.cos(a) + b.y * Math.sin(a);
+      const rz = n.z * Math.cos(a) + b.z * Math.sin(a);
+      positions.push(path[i].x + rx * r, path[i].y + ry * r, path[i].z + rz * r);
+      let nx = rx - t.x * slope;
+      let ny = ry - t.y * slope;
+      let nz = rz - t.z * slope;
+      const len = Math.hypot(nx, ny, nz) || 1;
+      nx /= len;
+      ny /= len;
+      nz /= len;
+      normals.push(nx, ny, nz);
+      uvs.push(j / tess, climbedAt[i] / tile);
+    }
+  }
+
+  for (let i = 0; i < path.length - 1; i++) {
+    for (let j = 0; j < tess; j++) {
+      const a = i * stride + j;
+      const c = a + stride;
+      indices.push(a, c, a + 1);
+      indices.push(a + 1, c, c + 1);
+    }
+  }
+
+  // Close the crown so the open ring does not show between the fronds.
+  const tip = positions.length / 3;
+  const top = path.length - 1;
+  positions.push(path[top].x, path[top].y, path[top].z);
+  normals.push(frames[top].t.x, frames[top].t.y, frames[top].t.z);
+  uvs.push(0.5, climbedAt[top] / tile);
+  const ring = top * stride;
+  for (let j = 0; j < tess; j++) indices.push(tip, ring + j, ring + j + 1);
+
+  const mesh = new Mesh("palm-trunk", scene);
+  const data = new VertexData();
+  data.positions = positions;
+  data.normals = normals;
+  data.uvs = uvs;
+  data.indices = indices;
+  data.applyToMesh(mesh);
+  return mesh;
+}
 
 export function buildWorld(scene: Scene, pal: Palette): World {
   const colliders: Box[] = [];
@@ -245,12 +378,15 @@ export function buildWorld(scene: Scene, pal: Palette): World {
     let x = px;
     let z = pz;
     let y = gy(px, pz);
+    const groundY = y;
     for (let i = 0; i < 6; i++) {
-      cyl(x, y + 0.55, z, 1.12, 0.32 - i * 0.025, 0.38 - i * 0.025, palmTrunk, 8);
       y += 1.05;
       x += Math.cos(lean) * i * 0.06;
       z += Math.sin(lean) * i * 0.06;
     }
+    const trunk = buildPalmTrunk(scene, px, groundY, pz, x, y, z);
+    trunk.material = palmTrunk;
+    statics.push(trunk);
     for (let k = 0; k < 11; k++) {
       const yaw = (k / 11) * Math.PI * 2 + rand() * 0.2;
       const droop = 0.35 + rand() * 0.35;

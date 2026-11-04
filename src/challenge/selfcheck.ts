@@ -18,11 +18,11 @@ import { CARRY_LIMIT, HOUR_EVENING, HOUR_MORNING, NEAR_REACH, QUIET_SECONDS, WIT
 import { verseQuiz } from "./words";
 import { GENESIS_CHAPTERS } from "../data/canon";
 import { chapterSpec } from "../data/chapters";
-import { PLACE_EDEN, PLACE_SOUTH_ROAD } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD } from "../data/era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "../data/identity";
 import { PLACEMENTS } from "../data/layout";
 import { SOUTH_ROAD_LECTERN } from "../data/play";
-import { chapterTexts } from "../data/reading";
+import { chapterPlacements, chapterTexts } from "../data/reading";
 
 function assert(cond: boolean, message: string): void {
   if (!cond) throw new Error(`Rule check failed: ${message}`);
@@ -48,7 +48,7 @@ function frame(partial: Partial<ApproachInput> & Pick<ApproachInput, "rules" | "
   });
 }
 
-/** Locks the take order, the chapter records, and the two scenes that already exist. Runs at startup. */
+/** Locks the take order, the chapter records, and the scenes that already exist. Runs at startup. */
 export function checkRuleEngine(): void {
   assert(NEAR_REACH === 1.8 && WITNESS_REACH === 1.52 && CARRY_LIMIT === 3 && QUIET_SECONDS === 2.5, "shared reaches");
 
@@ -105,6 +105,13 @@ export function checkRuleEngine(): void {
     spots: [spot({ verse: 1, distance: 1 })],
   });
   assert(morning.takes[0]?.action === "collect", "road-arrival dawn is morning");
+  const dawnEvening = frame({
+    rules: ["near", "hour"],
+    hour: HOUR_EVENING,
+    day: 0.32,
+    spots: [spot({ verse: 1, distance: 1 })],
+  });
+  assert(dawnEvening.prompt === "This verse opens in the evening.", "arriving at dawn keeps the evening window shut");
 
   const alone = frame({
     rules: ["near", "witness"],
@@ -164,8 +171,20 @@ export function checkRuleEngine(): void {
 
   const genesis2 = chapterSpec(BOOK_GENESIS, 2);
   assert(genesis2.place === PLACE_EDEN && genesis2.rules.join(",") === "near,order", "Genesis 2 opens in order in Eden");
-  const seal2 = sealCopy(genesis2, chapterSpec(BOOK_GENESIS, 3), PLACE_EDEN);
-  assert(seal2.offerNext === false && seal2.body.includes("path back"), "Eden sends the Seeker back to camp");
+  const genesis3 = chapterSpec(BOOK_GENESIS, 3);
+  const seal2 = sealCopy(genesis2, genesis3, PLACE_EDEN);
+  assert(seal2.offerNext === false && seal2.body.includes("east side"), "Eden sends the Seeker on toward Genesis 3");
+  assert(
+    genesis3.place === PLACE_EAST_OF_EDEN && genesis3.rules.join(",") === "near,hour",
+    "Genesis 3 is walked east of Eden",
+  );
+  assert(
+    genesis3.hour?.from === HOUR_EVENING.from && genesis3.hour.to === HOUR_EVENING.to && genesis3.hour.label === "evening",
+    "Genesis 3 uses the evening window",
+  );
+  assert(chapterPlacements(3).length === chapterTexts(3).length, "Genesis 3 places every verse east of Eden");
+  const seal3 = sealCopy(genesis3, chapterSpec(BOOK_GENESIS, 4), PLACE_EAST_OF_EDEN);
+  assert(seal3.offerNext === false && seal3.body.includes("path west"), "East of Eden sends the Seeker back toward camp");
 
   const genesis4 = chapterSpec(BOOK_GENESIS, 4);
   assert(genesis4.rules.includes("witness") && genesis4.companion === "joel", "the camp witness is Joel");
@@ -209,6 +228,10 @@ export function checkRuleEngine(): void {
   assert(roadIsOpen(PLACE_SOUTH_ROAD, []), "camp roads are not gated");
   assert(chapterAfterRoad(PLACE_JORDAN_HILLS, PLACE_SOUTH_ROAD, 1, ["genesis.1"]) === 2, "the road begins Genesis 2");
   assert(chapterAfterRoad(PLACE_JORDAN_HILLS, PLACE_SOUTH_ROAD, 1, []) === 1, "an unsealed valley does not skip ahead");
+  assert(chapterAfterRoad(PLACE_EDEN, PLACE_EAST_OF_EDEN, 2, ["genesis.2"]) === 3, "the east path begins Genesis 3");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_EAST_OF_EDEN, 2, ["genesis.2"]) === 3, "the camp path begins Genesis 3");
+  assert(chapterAfterRoad(PLACE_EDEN, PLACE_EAST_OF_EDEN, 2, []) === 2, "an unsealed garden does not skip ahead");
+  assert(chapterAfterRoad(PLACE_EAST_OF_EDEN, PLACE_EDEN, 3, ["genesis.2"]) === 3, "walking back does not change the chapter");
 }
 
 checkRuleEngine();

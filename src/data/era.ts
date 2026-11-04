@@ -6,6 +6,12 @@ export const PLACE_SOUTH_ROAD = "south-road";
 /** The garden planted eastward in Eden. Reached on foot from the south-road camp. */
 export const PLACE_EDEN = "eden";
 
+/**
+ * The ground east of that garden: the serpent, the cool of the day, and the gate.
+ * Reached on foot once Genesis 2 is in the Codex.
+ */
+export const PLACE_EAST_OF_EDEN = "east-of-eden";
+
 export interface EraPlace {
   id: string;
   name: string;
@@ -56,6 +62,15 @@ export const PATRIARCHS = {
       mapY: 0.62,
       latitude: 32,
       spawn: { x: 0, z: -66 },
+    },
+    {
+      id: PLACE_EAST_OF_EDEN,
+      name: "East of Eden",
+      // Stored with the place. The travel map does not draw this ground; the path is the way in.
+      mapX: 0.93,
+      mapY: 0.56,
+      latitude: 32,
+      spawn: { x: -74, z: 0 },
     },
   ] as const satisfies readonly EraPlace[],
   roads: [

@@ -12,7 +12,14 @@ export type Site =
   | "garden"
   | "rivers"
   | "naming"
-  | "sleep";
+  | "sleep"
+  | "serpent"
+  | "fig"
+  | "hiding"
+  | "curse"
+  | "thorns"
+  | "skins"
+  | "gate";
 
 export interface Placement {
   verse: number;
@@ -119,4 +126,50 @@ export const EDEN_PLACEMENTS: readonly Placement[] = [
   { verse: 23, x: -4, z: 64, site: "sleep", area: SLEEP, landmark: "where it was said, bone of my bones" },
   { verse: 24, x: 12, z: 70, site: "sleep", area: SLEEP, landmark: "on the path of leaving and cleaving" },
   { verse: 25, x: 0, z: 78, site: "sleep", area: SLEEP, landmark: "in the open beyond the grove, where they were not ashamed" },
+];
+
+const SERPENT = "The Serpent's Tree";
+const FIG = "The Fig Tree";
+const COOL = "Cool of the Day";
+const CURSE = "The Curses";
+const THORNS = "The Cursed Ground";
+const SKINS = "Coats of Skins";
+const GATE = "The East Gate";
+
+/**
+ * Genesis 3, east of the garden. +X is east, toward the gate.
+ * Any verse may be taken once the evening window is open.
+ * Kept clear of trunks, pillars, and the two who hide.
+ */
+export const EAST_OF_EDEN_PLACEMENTS: readonly Placement[] = [
+  { verse: 1, x: -50, z: 8, site: "serpent", area: SERPENT, landmark: "where the serpent asks whether God has said" },
+  { verse: 2, x: -58, z: -6, site: "serpent", area: SERPENT, landmark: "where the woman answers the serpent" },
+  { verse: 3, x: -42, z: 16, site: "serpent", area: SERPENT, landmark: "at the foot of the tree that was not to be touched" },
+  { verse: 4, x: -40, z: -8, site: "serpent", area: SERPENT, landmark: "where the serpent says, Ye shall not surely die" },
+  { verse: 5, x: -30, z: 6, site: "serpent", area: SERPENT, landmark: "where the serpent promises that their eyes will be opened" },
+  { verse: 6, x: -24, z: -8, site: "serpent", area: SERPENT, landmark: "where the fruit was taken, and eaten, and given" },
+
+  { verse: 7, x: -10, z: 4, site: "fig", area: FIG, landmark: "where fig leaves were sewn into aprons" },
+
+  { verse: 8, x: 2, z: 12, site: "hiding", area: COOL, landmark: "among the trees, where they hid in the cool of the day" },
+  { verse: 9, x: 12, z: 2, site: "hiding", area: COOL, landmark: "where the voice calls, Where art thou" },
+  { verse: 10, x: 6, z: -12, site: "hiding", area: COOL, landmark: "where the man says he was afraid, because he was naked" },
+  { verse: 11, x: 20, z: 14, site: "hiding", area: COOL, landmark: "where it is asked whether they have eaten of the tree" },
+  { verse: 12, x: 28, z: 2, site: "hiding", area: COOL, landmark: "where the man says the woman gave him of the tree" },
+  { verse: 13, x: 22, z: -12, site: "hiding", area: COOL, landmark: "where the woman says the serpent beguiled her" },
+
+  { verse: 14, x: 38, z: 8, site: "curse", area: CURSE, landmark: "in the dust, where the serpent is cursed to go upon its belly" },
+  { verse: 15, x: 48, z: -4, site: "curse", area: CURSE, landmark: "where enmity is put between the serpent and the woman" },
+  { verse: 16, x: 40, z: -16, site: "curse", area: CURSE, landmark: "where sorrow is spoken over the woman" },
+
+  { verse: 17, x: 58, z: 12, site: "thorns", area: THORNS, landmark: "where the ground is cursed for Adam's sake" },
+  { verse: 18, x: 66, z: -6, site: "thorns", area: THORNS, landmark: "among the thorns and the thistles" },
+  { verse: 19, x: 74, z: 6, site: "thorns", area: THORNS, landmark: "at the mound of dust, where it is said, dust thou art" },
+
+  { verse: 20, x: 64, z: 20, site: "skins", area: SKINS, landmark: "where the woman is named Eve, the mother of all living" },
+  { verse: 21, x: 78, z: -12, site: "skins", area: SKINS, landmark: "where the coats of skins were laid" },
+
+  { verse: 22, x: 84, z: 6, site: "gate", area: GATE, landmark: "within sight of the tree of life, which is kept from them" },
+  { verse: 23, x: 112, z: 8, site: "gate", area: GATE, landmark: "outside the gate, where the man is sent to till the ground" },
+  { verse: 24, x: 94, z: -4, site: "gate", area: GATE, landmark: "before the cherubim and the flaming sword" },
 ];

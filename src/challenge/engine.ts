@@ -1,5 +1,5 @@
 import { chapterKey } from "../data/chapters";
-import { PLACE_SOUTH_ROAD } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_SOUTH_ROAD } from "../data/era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "../data/identity";
 import type { OwnedVerse, Purse } from "../data/play";
 import {
@@ -188,11 +188,15 @@ export function roadIsOpen(fromPlace: string, sealed: readonly string[]): boolea
 
 /**
  * Arriving at the camp from the valley, with Genesis 1 sealed, begins Genesis 2.
- * The caller still sets the clock to dawn.
+ * Arriving east of Eden, with Genesis 2 sealed and still the active chapter, begins Genesis 3.
+ * The caller still sets the clock to dawn. Dawn is outside the evening window.
  */
 export function chapterAfterRoad(from: string, to: string, chapter: number, sealed: readonly string[]): number {
   if (from === PLACE_JORDAN_HILLS && to === PLACE_SOUTH_ROAD && chapter === 1 && sealed.includes(chapterKey(BOOK_GENESIS, 1))) {
     return 2;
+  }
+  if (to === PLACE_EAST_OF_EDEN && chapter === 2 && sealed.includes(chapterKey(BOOK_GENESIS, 2))) {
+    return 3;
   }
   return chapter;
 }

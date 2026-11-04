@@ -1,5 +1,5 @@
 import type { ChapterSpec } from "../data/chapters";
-import { PLACE_EDEN, PLACE_SOUTH_ROAD, placeById } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD, placeById } from "../data/era";
 
 /** Joel's summary of the active rule list. One sentence per rule that needs saying. */
 export function ruleBrief(spec: ChapterSpec, following: boolean): string {
@@ -19,6 +19,16 @@ export function ruleBrief(spec: ChapterSpec, following: boolean): string {
   return bits.join(" ");
 }
 
+/** How to walk from the place you sealed toward the next chapter, when it is not here. */
+function pathNote(standingIn: string, nextPlace: string): string {
+  if (standingIn === PLACE_EDEN && nextPlace === PLACE_SOUTH_ROAD) return " The path back leaves to the south.";
+  if (standingIn === PLACE_EDEN && nextPlace === PLACE_EAST_OF_EDEN) return " A path leaves the east side of the garden.";
+  if (standingIn === PLACE_EAST_OF_EDEN && nextPlace === PLACE_SOUTH_ROAD) {
+    return " The path west returns to the garden, and the camp is south from there.";
+  }
+  return "";
+}
+
 /**
  * The seal dialog. A chapter may replace the body. The offer to begin the next
  * chapter appears only when that chapter is walked in the place the Seeker is standing.
@@ -35,8 +45,6 @@ export function sealCopy(
       ? ""
       : offerNext
         ? ` Genesis ${next.chapter} is here in the camp whenever you are ready.`
-        : ` Genesis ${next.chapter} is at ${placeById(next.place).name}.${
-            standingIn === PLACE_EDEN && next.place === PLACE_SOUTH_ROAD ? " The path back leaves to the south." : ""
-          }`;
+        : ` Genesis ${next.chapter} is at ${placeById(next.place).name}.${pathNote(standingIn, next.place)}`;
   return { body: `Genesis ${spec.chapter} is in the Codex.${nextLine}`, offerNext };
 }
