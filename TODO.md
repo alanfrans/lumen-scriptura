@@ -4,7 +4,7 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 
 ## Graphics
 - [x] Make graphics more detailed and realistic (terrain, characters, props, lighting, textures) — https://github.com/alanfrans/lumen-scriptura/pull/3
-- [ ] Fix the chopped-up look on palm tree trunks (smooth/fix trunk rendering after the procedural wood albedo/normals from the graphics pass)
+- [x] Fix the chopped-up look on palm tree trunks (smooth/fix trunk rendering after the procedural wood albedo/normals from the graphics pass) — https://github.com/alanfrans/lumen-scriptura/pull/5
 
 ## Eden polish
 - [ ] Add more bushes and filler vegetation in the Eden (Genesis 2) scene
