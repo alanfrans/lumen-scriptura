@@ -7,8 +7,8 @@ Check an item off with `[x]` and add the PR link when it's merged. Alan adds new
 - [x] Fix the chopped-up look on palm tree trunks (smooth/fix trunk rendering after the procedural wood albedo/normals from the graphics pass) — https://github.com/alanfrans/lumen-scriptura/pull/5
 
 ## Eden polish
-- [ ] Add more bushes and filler vegetation in the Eden (Genesis 2) scene
-- [ ] Scatter broken pottery here and there around the Eden scene
+- [x] Add more bushes and filler vegetation in the Eden (Genesis 2) scene
+- [x] Scatter broken pottery here and there around the Eden scene
 
 ## Game rules
 - [x] Develop the game rules for each chapter (design doc: what the player does, wins, and collects in each chapter) (https://github.com/alanfrans/lumen-scriptura/pull/1)
