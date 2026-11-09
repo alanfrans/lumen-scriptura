@@ -67,6 +67,20 @@ body {
   color: #cbbd9f;
 }
 
+#splat-stats {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  max-width: 440px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #cbbd9f;
+  background: rgba(24, 20, 18, 0.78);
+  border: 1px solid rgba(240, 214, 160, 0.25);
+  border-radius: 6px;
+}
+
 #compass {
   position: absolute;
   top: 14px;

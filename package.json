@@ -6,12 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "splats:tiles": "node scripts/generate-grove-tiles.mjs",
+    "splats:collider": "node scripts/build-splat-collider.mjs",
+    "splats:lod": "node scripts/build-splat-lod.mjs",
+    "splats:rebuild": "npm run splats:tiles && npm run splats:collider && npm run splats:lod"
   },
   "dependencies": {
-    "@babylonjs/core": "^9.29.0"
+    "@babylonjs/core": "^9.29.0",
+    "@dimforge/rapier3d-compat": "^0.21.0",
+    "@sparkjsdev/spark": "^2.4.0",
+    "three": "^0.180.0"
   },
   "devDependencies": {
+    "@playcanvas/splat-transform": "^3.10.3",
+    "@types/three": "^0.180.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.2"
   }
