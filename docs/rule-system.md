@@ -40,7 +40,7 @@ The third quiz ending is the tail of another verse in the same chapter (`src/cha
 
 ## Win, collection, roads
 
-A chapter wins when `chapterHave === chapterTotal`. The key `book.chapter` is stored in `sealedChapters`. Genesis 1 still sets `sealed` as well, so an old save keeps meaning the same thing. The south road reads the key, not that flag. Arriving by that road, with the key sealed, begins Genesis 2 and sets the clock to dawn. Arriving east of Eden, with Genesis 2 sealed and still the active chapter, begins Genesis 3 and sets the clock to dawn. Dawn is outside the evening window, so those columns stay shut until evening.
+A chapter wins when `chapterHave === chapterTotal`. The key `book.chapter` is stored in `sealedChapters`. Genesis 1 still sets `sealed` as well, so an old save keeps meaning the same thing. The south road reads the key, not that flag. Arriving by that road, with the key sealed, begins Genesis 2 and sets the clock to dawn. Arriving east of Eden, with Genesis 2 sealed and still the active chapter, begins Genesis 3 and sets the clock to dawn. Dawn is outside the evening window, so those columns stay shut until evening. Arriving at the generations, with Genesis 4 sealed and still the active chapter, begins Genesis 5 and sets the clock to dawn. The words rule does not care about the hour.
 
 The Codex book count is how many listed books have every chapter key sealed. Genesis is the only book, and it is in every canon level, so sealing chapter 50 shows 1 on each book bar. No new save field.
 
@@ -53,7 +53,9 @@ Hope on the sky is this chapter's fraction. It starts again when the next chapte
 | Genesis 1 | Valley | Walk up to a column. Verse 31 is Tobias: 30 coin, or the clay jar. | 31/31. Beacon over the arch. South road opens (M). | The 31 verses. Key, jar, coin, and Dinah are world props, not required. |
 | Genesis 2 | Eden | Take the verses in written order. Adam points at the next one. | 25/25. A path leaves the east side of the garden. | The 25 verses. |
 | Genesis 3 | East of Eden | Walk up to a column while the clock is in the evening. Any order. Adam points at the nearest one once that window is open. | 24/24. The path west returns to the garden, and the camp is south from there. | The 24 verses. |
-| Genesis 4–6 | Camp | One added rule each: a witness (Joel), the words, carry to the lectern. | The verse count, then Joel offers the next chapter. | Those verses. |
+| Genesis 4 | Camp | A witness: Joel must stand at the tablet. | 26/26. The west path of the camp leads to Genesis 5. | The 26 verses. |
+| Genesis 5 | The generations | Walk up and finish the ending of each line. Any order. Seth points at the nearest one. | 32/32. The west path returns to the camp, where Joel offers Genesis 6. | The 32 verses. |
+| Genesis 6 | Camp | Carry each verse to the lectern, three at a time. | The verse count, then Joel offers the next chapter. | Those verses. |
 | Genesis 7–50 | Camp, until a scene replaces it | The compiled rule list. `words` together with `carry` (12, 27, 42) finishes the line and then lifts. | The verse count. Chapter 50 has no next chapter. | Those verses. |
 
 ## A later scene
