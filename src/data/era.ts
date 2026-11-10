@@ -12,6 +12,12 @@ export const PLACE_EDEN = "eden";
  */
 export const PLACE_EAST_OF_EDEN = "east-of-eden";
 
+/**
+ * The field of the brothers, and the land where Cain dwelt, east of Eden.
+ * Reached on foot once Genesis 3 is in the Codex.
+ */
+export const PLACE_NOD = "nod";
+
 export interface EraPlace {
   id: string;
   name: string;
@@ -69,6 +75,15 @@ export const PATRIARCHS = {
       // Stored with the place. The travel map does not draw this ground; the path is the way in.
       mapX: 0.93,
       mapY: 0.56,
+      latitude: 32,
+      spawn: { x: -74, z: 0 },
+    },
+    {
+      id: PLACE_NOD,
+      name: "Land of Nod",
+      // Stored with the place. The travel map does not draw this ground; the path is the way in.
+      mapX: 0.97,
+      mapY: 0.48,
       latitude: 32,
       spawn: { x: -74, z: 0 },
     },

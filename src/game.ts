@@ -39,7 +39,7 @@ import { CARRY_LIMIT, COMPANION_SPEED, COMPANION_STAND, holdsShut, QUIET_SECONDS
 import { verseQuiz } from "./challenge/words";
 import { CANON_LEVELS, GENESIS_CHAPTERS, GENESIS_VERSES, TORAH_VERSES } from "./data/canon";
 import { chapterKey, chapterSpec, nextChapter, type ChapterSpec } from "./data/chapters";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_NOD, placeById, PLACE_SOUTH_ROAD, roadsFrom } from "./data/era";
 import { BOOK_GENESIS, compareVerseIds, PLACE_JORDAN_HILLS, verseId } from "./data/identity";
 import { CURRENT_LEVEL } from "./data/levels";
 import { PLACEMENTS, type Placement } from "./data/layout";
@@ -49,9 +49,10 @@ import { Hud } from "./hud";
 import { clearState, loadState, saveState, STIPEND_PERIOD, type SaveState } from "./save";
 import { resolveCircle } from "./world/collision";
 import { EDEN_EAST, EDEN_PATH } from "./world/eden";
-import { FALL_GATE, FALL_WEST } from "./world/fall";
+import { FALL_EAST, FALL_GATE, FALL_WEST } from "./world/fall";
+import { NOD_BEACON, NOD_WEST } from "./world/nod";
 import { loadPlace } from "./world/place";
-import { EAST_PATH, NORTH_PATH } from "./world/south-road";
+import { EAST_PATH, NOD_PATH, NORTH_PATH } from "./world/south-road";
 import { VerseLights } from "./world/verses";
 import {
   CHAPEL,
@@ -337,6 +338,12 @@ export class Game {
         blurb.textContent =
           "East of the garden, the twenty-four verses of Genesis 3 wait for the cool of the day. They open in the evening, in any order, from the serpent's tree to the flaming sword. Adam hides among the trees and knows where each one rests.";
       }
+    } else if (this.state.place === PLACE_NOD) {
+      if (sub) sub.textContent = "Genesis 4 · Land of Nod";
+      if (blurb) {
+        blurb.textContent =
+          "East of the gate, the twenty-six verses of Genesis 4 lie in the land of Nod. They open when someone stands with you, in any order, from the brothers' birth to the name of the LORD. Abel keeps the sheep and will stand with you. Cain will not.";
+      }
     }
   }
 
@@ -376,6 +383,11 @@ export class Game {
     if (this.state.place === PLACE_EAST_OF_EDEN) {
       this.camera.alpha = Math.PI;
       this.hud.toast("Genesis 3 is east of the garden. The verses open in the evening. Adam is among the trees.");
+      return;
+    }
+    if (this.state.place === PLACE_NOD) {
+      this.camera.alpha = Math.PI;
+      this.hud.toast("Genesis 4 is the land of Nod. The verses open when someone stands with you. Abel is near the path.");
       return;
     }
     if (this.state.place === PLACE_JORDAN_HILLS && !this.state.metMiriam) {
@@ -922,6 +934,10 @@ export class Game {
     if (adam) list.push(npc("Talk to Adam", adam, () => this.talkAdam()));
     const eve = w.folk.find((rig) => rig.root.name === "eve");
     if (eve) list.push(npc("Talk to Eve", eve, () => this.talkEve()));
+    const abel = w.folk.find((rig) => rig.root.name === "abel");
+    if (abel) list.push(npc("Talk to Abel", abel, () => this.talkAbel()));
+    const cain = w.folk.find((rig) => rig.root.name === "cain");
+    if (cain) list.push(npc("Talk to Cain", cain, () => this.talkCain()));
     if (this.state.place === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EDEN) {
       list.push({
         label: "Take the eastward path to the garden",
@@ -938,7 +954,9 @@ export class Game {
     }
     const playing = this.spec();
     const onFall = playing.place === PLACE_EAST_OF_EDEN;
+    const onNod = playing.place === PLACE_NOD;
     const fallNext = this.state.chapter === 2 && this.state.sealedChapters.includes("genesis.2");
+    const nodNext = this.state.chapter === 3 && this.state.sealedChapters.includes("genesis.3");
     if (this.state.place === PLACE_EDEN && (this.state.chapter === 2 || onFall)) {
       list.push({
         label: "Take the eastward path",
@@ -959,11 +977,38 @@ export class Game {
         act: () => this.walkBetween(PLACE_EAST_OF_EDEN, "Two days east. You arrive at dawn, where the verses open in the evening."),
       });
     }
+    if (this.state.place === PLACE_EAST_OF_EDEN && (this.state.chapter === 3 || onNod)) {
+      list.push({
+        label: "Take the eastward path",
+        ...FALL_EAST,
+        act: () => {
+          if (!onNod && !this.state.sealedChapters.includes("genesis.3")) {
+            this.hud.toast("Genesis 3 is still being gathered. The way east opens when the chapter is whole.");
+            return;
+          }
+          this.walkBetween(PLACE_NOD, "Two days east. You arrive at dawn in the land of Nod. The verses open when someone stands with you.");
+        },
+      });
+    }
     if (this.state.place === PLACE_EAST_OF_EDEN) {
       list.push({
         label: "Take the westward path to the garden",
         ...FALL_WEST,
         act: () => this.walkBetween(PLACE_EDEN, "Two days west. The garden of Eden is ahead."),
+      });
+    }
+    if (this.state.place === PLACE_SOUTH_ROAD && (onNod || nodNext)) {
+      list.push({
+        label: "Take the path to the land of Nod",
+        ...NOD_PATH,
+        act: () => this.walkBetween(PLACE_NOD, "Two days east. You arrive at dawn in the land of Nod. The verses open when someone stands with you."),
+      });
+    }
+    if (this.state.place === PLACE_NOD) {
+      list.push({
+        label: "Take the westward path",
+        ...NOD_WEST,
+        act: () => this.walkBetween(PLACE_EAST_OF_EDEN, "Two days west. The ground east of Eden is ahead."),
       });
     }
     if (playing.place === this.state.place && playing.rules.includes("carry") && playing.lectern) {
@@ -975,7 +1020,7 @@ export class Game {
       });
     }
     const companion = this.companionName();
-    if (companion && companion !== "joel") {
+    if (companion && companion !== "joel" && companion !== "abel") {
       const rig = w.folk.find((person) => person.root.name === companion);
       if (rig) list.push(npc(`Talk to ${companion}`, rig, () => this.talkCompanion()));
     }
@@ -1107,7 +1152,9 @@ export class Game {
           ? "Genesis 2 is in the garden of Eden. Press M and take the south road. From that camp, a path runs east to the garden."
           : spec.place === PLACE_EAST_OF_EDEN
             ? "Genesis 3 is east of the garden of Eden. Press M and take the south road. From that camp, a path runs north. The verses open in the evening."
-            : `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
+            : spec.place === PLACE_NOD
+              ? "Genesis 4 is the land of Nod, east of Eden. Press M and take the south road. From that camp, a path runs south-east. The verses open when someone stands with you."
+              : `Genesis ${s.chapter} is at the camp beside the south road. Press M, and take the road south.`,
       );
       return;
     }
@@ -1264,11 +1311,19 @@ export class Game {
   }
 
   private talkAdam(): void {
+    if (this.state.place === PLACE_NOD) {
+      this.talkAdamNod();
+      return;
+    }
     if (this.state.place === PLACE_EAST_OF_EDEN) {
       this.talkAdamFallen();
       return;
     }
     const who = "Adam, keeper of the garden";
+    if (chapterSpec(this.state.book, this.state.chapter).place === PLACE_NOD) {
+      this.hud.openDialog(who, "Genesis 4 is not in this garden. The land of Nod is east of the gate, and the verses open when someone stands with you.");
+      return;
+    }
     if (chapterSpec(this.state.book, this.state.chapter).place === PLACE_EAST_OF_EDEN) {
       this.hud.openDialog(who, "Genesis 3 is not in this garden. The path east leads to the cool of the day. The verses open in the evening.");
       return;
@@ -1293,8 +1348,12 @@ export class Game {
 
   private talkAdamFallen(): void {
     const who = "Adam";
+    if (chapterSpec(this.state.book, this.state.chapter).place === PLACE_NOD) {
+      this.hud.openDialog(who, "Genesis 4 is not on this ground. The path east of the gate leads into the land of Nod. Someone must stand with you before a verse will open.");
+      return;
+    }
     if (this.chapterHave() === this.chapterTotal()) {
-      this.hud.openDialog(who, "The chapter is whole. Every verse of the fall is in your Codex. The path west returns to the garden.");
+      this.hud.openDialog(who, "The chapter is whole. Every verse of the fall is in your Codex. The path east leads to the land of Nod. The path west returns to the garden.");
       return;
     }
     const intro = "genesis.3.0";
@@ -1317,6 +1376,16 @@ export class Game {
   }
 
   private talkEve(): void {
+    if (this.state.place === PLACE_NOD) {
+      const line =
+        this.state.chapter === 4 && this.has(25)
+          ? "God hath appointed me another seed instead of Abel, whom Cain slew."
+          : this.state.chapter === 4 && this.has(1)
+            ? "I have gotten a man from the LORD."
+            : "Abel keeps the sheep. Stay with him, and the verses will open.";
+      this.hud.openDialog("Eve", line);
+      return;
+    }
     if (this.state.place === PLACE_EAST_OF_EDEN) {
       const line = this.has(13)
         ? "The serpent beguiled me, and I did eat."
@@ -1339,7 +1408,7 @@ export class Game {
     const spec = this.spec();
     if (!spec.rules.includes("witness") || spec.companion !== name || this.state.guideFollows) return [];
     if (spec.place !== this.state.place) return [];
-    const spoken = name === "joel" ? "Joel" : name;
+    const spoken = name === "joel" ? "Joel" : name === "abel" ? "Abel" : name;
     return [
       {
         label: "Walk with me",
@@ -1351,6 +1420,61 @@ export class Game {
       },
       { label: "Not now", onPick: () => {} },
     ];
+  }
+
+  private talkAbel(): void {
+    const who = "Abel, keeper of sheep";
+    const spec = this.spec();
+    if (spec.chapter !== 4 || this.state.place !== PLACE_NOD) {
+      this.hud.openDialog(who, "The verses of this ground are already gathered. The path west leads back.");
+      return;
+    }
+    if (this.chapterHave() === this.chapterTotal()) {
+      this.hud.openDialog(
+        who,
+        "The chapter is whole. Every verse of this ground is in your Codex. The path west returns toward the garden, and Genesis 5 waits at the camp.",
+      );
+      return;
+    }
+    if (!this.state.guideFollows) {
+      this.hud.openDialog(
+        who,
+        "These verses stay shut unless someone stands with you. I will stand with you. Twenty-six verses of Genesis 4 lie here, from my mother's word to the name of the LORD. Cain will not.",
+        this.followOptions("abel"),
+      );
+      return;
+    }
+    const target = this.nearestUncollected();
+    if (target) this.verseHint(who, target);
+  }
+
+  private talkCain(): void {
+    if (this.state.chapter !== 4) {
+      this.hud.openDialog("Cain", "I till the ground. I will not walk with you.");
+      return;
+    }
+    const line = this.has(15)
+      ? "The LORD set a mark upon me, lest any finding me should kill me."
+      : this.has(9)
+        ? "I know not. Am I my brother's keeper?"
+        : this.has(8)
+          ? "We were in the field."
+          : "I till the ground. My brother keeps sheep. I will not walk with you.";
+    this.hud.openDialog("Cain", line);
+  }
+
+  private talkAdamNod(): void {
+    const who = "Adam";
+    if (this.spec().chapter !== 4) {
+      this.hud.openDialog(who, "Abel keeps the sheep east of the booth. The path west leads back toward the gate.");
+      return;
+    }
+    const line = this.has(25)
+      ? "God hath appointed me another seed instead of Abel."
+      : this.has(8)
+        ? "Cain rose up against Abel his brother in the field, and slew him."
+        : "Eve bare Cain, and again his brother Abel. Abel was a keeper of sheep, and Cain a tiller of the ground. Stay with Abel. The verses will not open for you alone.";
+    this.hud.openDialog(who, line);
   }
 
   /** A companion who is not Joel. Joel keeps the road talk; the rules he states are the same brief. */
@@ -1378,6 +1502,13 @@ export class Game {
       );
       return;
     }
+    if (this.state.chapter === 3 && this.state.sealedChapters.includes("genesis.3") && this.state.place === PLACE_SOUTH_ROAD) {
+      this.hud.openDialog(
+        who,
+        "Genesis 3 is in the Codex. Genesis 4 is the land of Nod, east of Eden. The verses open when someone stands with you. A path leaves the south-east side of the camp.",
+      );
+      return;
+    }
     if (spec.place === PLACE_EDEN && this.state.place !== PLACE_EDEN) {
       this.hud.openDialog(
         who,
@@ -1389,6 +1520,13 @@ export class Game {
       this.hud.openDialog(
         who,
         "Genesis 3 is not in this camp. It is the ground east of the garden, and the verses open in the evening. The path leaves the north side of the camp.",
+      );
+      return;
+    }
+    if (spec.place === PLACE_NOD && this.state.place !== PLACE_NOD) {
+      this.hud.openDialog(
+        who,
+        "Genesis 4 is not in this camp. It is the land of Nod, east of Eden, and the verses open when someone stands with you. The path leaves the south-east side of the camp.",
       );
       return;
     }
@@ -1405,6 +1543,7 @@ export class Game {
     if (!hop) {
       if (this.state.place === PLACE_EDEN) this.hud.toast("The path south returns to the camp. The garden is not on this map.");
       else if (this.state.place === PLACE_EAST_OF_EDEN) this.hud.toast("The path west returns to the garden. This ground is not on this map.");
+      else if (this.state.place === PLACE_NOD) this.hud.toast("The path west returns toward the garden. This ground is not on this map.");
       return;
     }
     if (!roadIsOpen(this.state.place, this.state.sealedChapters)) {
@@ -1459,6 +1598,9 @@ export class Game {
     if (dest === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_EAST_OF_EDEN) {
       this.hud.toast("Genesis 3 is east of the garden. The path leaves the north side of the camp, and the verses open in the evening.");
     }
+    if (dest === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_NOD) {
+      this.hud.toast("Genesis 4 is the land of Nod. The path leaves the south-east side of the camp, and the verses open when someone stands with you.");
+    }
     this.persist();
   }
 
@@ -1471,8 +1613,11 @@ export class Game {
     this.day = 0.32;
     this.state.chapter = chapterAfterRoad(this.state.place, id, this.state.chapter, this.state.sealedChapters);
     this.goToPlace(id, true);
-    if (id === PLACE_EAST_OF_EDEN) this.camera.alpha = Math.PI;
+    if (id === PLACE_EAST_OF_EDEN || id === PLACE_NOD) this.camera.alpha = Math.PI;
     this.hud.toast(toast);
+    if (id === PLACE_SOUTH_ROAD && chapterSpec(this.state.book, this.state.chapter).place === PLACE_NOD) {
+      this.hud.toast("Genesis 4 is the land of Nod. A path leaves the south-east side of the camp, and the verses open when someone stands with you.");
+    }
     this.persist();
   }
 
@@ -1579,6 +1724,7 @@ export class Game {
     this.beacon = b;
     if (this.state.place === PLACE_EDEN) b.position.set(4, 70, 16);
     else if (this.state.place === PLACE_EAST_OF_EDEN) b.position.set(FALL_GATE.x, 70, FALL_GATE.z);
+    else if (this.state.place === PLACE_NOD) b.position.set(NOD_BEACON.x, 70, NOD_BEACON.z);
     else b.position.set(0, 70, this.state.place === PLACE_JORDAN_HILLS ? -25 : -2);
     const m = new StandardMaterial("beacon-mat", this.scene);
     m.emissiveColor = new Color3(1, 0.96, 0.85);

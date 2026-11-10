@@ -7,6 +7,9 @@ import type { Wanderer, World } from "./world";
 /** West end of this ground, where the path back to the garden is taken. */
 export const FALL_WEST = { x: -80, z: 2.6 };
 
+/** East of the gate, where the path into the land of Nod leaves once Genesis 3 is sealed. */
+export const FALL_EAST = { x: 130, z: 2.4 };
+
 /** Where the sword stands, and where the Hope Beacon rises once the chapter is sealed. */
 export const FALL_GATE = { x: 102, z: 0 };
 
@@ -162,6 +165,7 @@ export function buildFall(scene: Scene, pal: Palette): World {
     Math.hypot(x - LIFE.x, z - LIFE.z) >= r &&
     Math.hypot(x - FALL_GATE.x, z - FALL_GATE.z) >= r + 1.5 &&
     Math.hypot(x - FALL_WEST.x, z - FALL_WEST.z) >= 2.6 &&
+    Math.hypot(x - FALL_EAST.x, z - FALL_EAST.z) >= 2.6 &&
     Math.hypot(x - 10, z - 6) >= r &&
     Math.hypot(x - 18, z + 4) >= r;
 
@@ -396,6 +400,11 @@ export function buildFall(scene: Scene, pal: Palette): World {
     box(x, 0.02, z, 3.4, 0.035, 1.5, soil);
   }
   box(118, 0.2, -6, 0.8, 0.35, 0.3, darkStone, true);
+
+  // Further east, the land of Nod. The sign stands past the ground he was sent to till.
+  box(122, 0.03, 0, 28, 0.05, 2.6, soil);
+  box(FALL_EAST.x, 0.9, FALL_EAST.z, 0.14, 1.8, 0.14, wood, true);
+  box(FALL_EAST.x, 1.62, FALL_EAST.z, 1.2, 0.42, 0.08, wood);
 
   const perch = (x: number, y: number, z: number, yaw: number) => {
     const body = ball(x, y, z, 0.16, bird, 6);
