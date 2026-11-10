@@ -1,6 +1,6 @@
 import { HOUR_EVENING, isRule, type HourWindow, type RuleId } from "../challenge/rules";
 import { compileChapter } from "./compile";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD } from "./era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "./era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "./identity";
 import { chapterTexts } from "./reading";
 import { GENESIS_CHAPTERS } from "./canon";
@@ -32,6 +32,7 @@ export interface ChapterSpec {
  * Genesis 3 is walked east of that garden, and the verses open in the evening.
  * Each chapter after that adds one rule, at the south-road camp.
  * Order, then evening, then a witness, then the words, then carrying the verse to the lectern.
+ * Genesis 6 keeps that carry rule, on the ground where the ark is built.
  * A chapter left out of this list is compiled from its text.
  */
 export const CHAPTERS: readonly ChapterSpec[] = [
@@ -47,7 +48,7 @@ export const CHAPTERS: readonly ChapterSpec[] = [
   { book: BOOK_GENESIS, chapter: 3, place: PLACE_EAST_OF_EDEN, rules: ["near", "hour"], hour: HOUR_EVENING },
   { book: BOOK_GENESIS, chapter: 4, place: PLACE_SOUTH_ROAD, rules: ["near", "witness"] },
   { book: BOOK_GENESIS, chapter: 5, place: PLACE_SOUTH_ROAD, rules: ["near", "words"] },
-  { book: BOOK_GENESIS, chapter: 6, place: PLACE_SOUTH_ROAD, rules: ["near", "carry"] },
+  { book: BOOK_GENESIS, chapter: 6, place: PLACE_THE_ARK, rules: ["near", "carry"] },
 ];
 
 export function chapterKey(book: string, chapter: number): string {
