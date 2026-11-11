@@ -12,6 +12,9 @@ export const EAST_PATH = { x: 26, z: 2.2 };
 /** North along the road, where the path east of Eden leaves once Genesis 2 is sealed. */
 export const NORTH_PATH = { x: 4.6, z: 48 };
 
+/** South-east of the fire, where the path to the land of Nod leaves once Genesis 3 is sealed. */
+export const NOD_PATH = { x: 24, z: -18 };
+
 /** West of the fire, where the path to the book of the generations leaves once Genesis 4 is sealed. */
 export const WEST_PATH = { x: -26, z: 2.2 };
 
@@ -147,6 +150,17 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
     step.position.set(x, 0.04, 2.2);
     step.material = stone;
   }
+
+  const nodTrack = keep(MeshBuilder.CreateBox("nod-track", { width: 2.4, height: 0.04, depth: 16 }, scene));
+  nodTrack.position.set(24, 0.025, -12);
+  nodTrack.material = dirt;
+  const nodPost = keep(MeshBuilder.CreateBox("nod-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  nodPost.position.set(NOD_PATH.x, 0.85, NOD_PATH.z);
+  nodPost.material = wood;
+  const nodBoard = keep(MeshBuilder.CreateBox("nod-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  nodBoard.position.set(NOD_PATH.x, 1.55, NOD_PATH.z);
+  nodBoard.material = wood;
+  solid(NOD_PATH.x, NOD_PATH.z, 0.5, 0.5);
 
   const northPost = keep(MeshBuilder.CreateBox("north-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
   northPost.position.set(NORTH_PATH.x, 0.85, NORTH_PATH.z);

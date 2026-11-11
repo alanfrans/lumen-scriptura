@@ -10,7 +10,8 @@ The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GE
 | --- | --- | --- |
 | `jordan-hills` | The valley | Genesis 1 only |
 | `south-road` | South road camp | Every Genesis chapter that still has no scene of its own |
-| `generations` | The generations | Genesis 5 |
+| `nod` | Land of Nod | Genesis 4. Reached on foot from east of Eden, or from the camp |
+| `generations` | The generations | Genesis 5. Reached from the west side of the camp once Genesis 4 is sealed |
 
 Genesis 1–6 are written by hand in `CHAPTERS` (`src/data/chapters.ts`). Every other Genesis chapter is produced by `compileChapter` (`src/data/compile.ts`) from the chapter text and the chapter number. A hand entry always wins over the compiler.
 
@@ -236,21 +237,21 @@ When the 31st verse lands, Hope is full, the beacon rises, and the map road can 
 - **Place.** `east-of-eden`. The way in is the east path of the garden once Genesis 2 is sealed, or the north path of the camp. Both set the clock to dawn and begin this chapter.
 - **Rules.** `["near", "hour"]` with the evening window (15:36 through midnight to 04:48). The whole chapter uses one window. Verse 8 is not gated on its own.
 - **What the player does.** Be at a tablet while the clock is in the evening. At dawn, which is how either path delivers the Seeker, every column stays shut. Adam says the verses open in the evening. The Seeker can walk the ground while waiting. When the window opens, any tablet can be taken in any order, by walking up.
-- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. The path west returns to the garden. Joel offers Genesis 4 once the Seeker is back at the camp.
+- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. The path west returns to the garden. A path east of the gate leads to the land of Nod and begins Genesis 4.
 - **Collected.** The 24 verses.
 - **Failure and retry.** Outside the window the refusal is "This verse opens in the evening." No verse is lost if the window closes after it was collected. A quiz is not involved, so the dialog-versus-clock edge case does not come up. The wait is the whole of the retry.
 - **Passage tie.** The authored window matches the cool of the day, when the voice walks the garden, rather than the morning the road arrives in. Morning is the time these verses stay shut.
 
 ### Genesis 4 — A witness
 
-- **Passage.** Genesis 4. Cain and Abel, "Am I my brother's keeper?", the mark, and Seth. 26 verses, `genesis.4.1`–`genesis.4.26`.
-- **Place.** `south-road`. Joel is the only witness on this ground.
-- **Rules.** `["near", "witness"]`.
-- **What the player does.** Talk to Joel and choose "Walk with me." Stand on each tablet until he is within 1.52 of it. The column stays dark until he is. Order does not matter. He hangs back about a step, so sprinting off leaves the next tablet shut until he catches up.
-- **Completed when.** 26/26 collected with a person beside the tablet at the moment of the take. The west path of the camp then leads to Genesis 5. Joel does not begin that chapter at the fire.
-- **Collected.** The 26 verses. Joel is not collected. `guideFollows` is a condition, not a prize.
-- **Failure and retry.** Alone, the prompt says "Someone must stand here with you." No coin, no quiet timer. Walk back toward Joel or wait for him.
-- **Passage tie.** The chapter turns on a brother who will not stand with his brother. The rule asks for the opposite: the verse will not open for a Seeker who is standing alone.
+- **Passage.** Genesis 4. Cain and Abel, "Am I my brother's keeper?", the mark, the city of Enoch, and Seth. 26 verses, `genesis.4.1`–`genesis.4.26`.
+- **Place.** `nod`, the land of Nod, east of Eden. The way in is the east path past the gate once Genesis 3 is sealed, or the south-east path of the camp. Both set the clock to dawn and begin this chapter. Spawn is on the west path, near Abel.
+- **Rules.** `["near", "witness"]`. Abel is the companion. Cain, Adam, and Eve stand on this ground and will talk, and none of them is close enough to a tablet to open it. Cain will not walk with you.
+- **What the player does.** Talk to Abel and choose "Walk with me." Stand on each tablet until he is within 1.52 of it. The column stays dark until he is. Order does not matter. He hangs back about a step, so sprinting off leaves the next tablet shut until he catches up.
+- **Completed when.** 26/26 collected with a person beside the tablet at the moment of the take. A Hope Beacon rises over the city of Enoch. The path west returns toward the garden. Genesis 5 is the avenue west of the camp, and Joel does not begin that chapter at the fire. Beginning that chapter clears `guideFollows`.
+- **Collected.** The 26 verses. Abel is not collected. `guideFollows` is a condition, not a prize.
+- **Failure and retry.** Alone, the prompt says "Someone must stand here with you." No coin, no quiet timer. Walk back toward Abel or wait for him.
+- **Passage tie.** The chapter turns on a brother who will not stand with his brother. The rule asks for the opposite: the verse will not open for a Seeker who is standing alone. Abel will.
 
 ### Genesis 5 — The words
 

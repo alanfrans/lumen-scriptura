@@ -20,14 +20,21 @@ export type Site =
   | "thorns"
   | "skins"
   | "gate"
+  | "birth"
+  | "altar"
+  | "blood"
+  | "mark"
+  | "nod"
+  | "enoch"
+  | "lineage"
+  | "craft"
+  | "seth"
   | "book"
   | "adam"
-  | "seth"
   | "enos"
   | "cainan"
   | "mahalaleel"
   | "jared"
-  | "enoch"
   | "methuselah"
   | "lamech"
   | "noah";
@@ -245,4 +252,57 @@ export const GENERATIONS_PLACEMENTS: readonly Placement[] = [
   { verse: 31, x: 90, z: -9, site: "lamech", area: LAMECH_LINE, landmark: "at Lamech's stone: seven hundred seventy and seven years, and he died" },
 
   { verse: 32, x: 104, z: 4, site: "noah", area: NOAH_LINE, landmark: "before Shem, Ham, and Japheth, the three sons of Noah" },
+];
+
+const BIRTH = "Birth of the Brothers";
+const ALTARS = "The Two Altars";
+const SLAIN = "The Field";
+const BLOOD = "The Crying Ground";
+const MARK = "The Mark";
+const NOD = "Land of Nod";
+const CITY = "The City of Enoch";
+const LINE = "The Line of Cain";
+const CRAFT = "Tents, Harp, and Forge";
+const SETH = "Seth and Enos";
+
+/**
+ * Genesis 4, in the land of Nod, east of the gate.
+ * +X is east. Any verse may be taken once Abel stands at the tablet.
+ * People who will not follow are kept well clear of every tablet.
+ */
+export const NOD_PLACEMENTS: readonly Placement[] = [
+  { verse: 1, x: -52, z: -10, site: "birth", area: BIRTH, landmark: "where Eve said, I have gotten a man from the LORD" },
+  { verse: 2, x: -40, z: 6, site: "birth", area: BIRTH, landmark: "where Abel was born, a keeper of sheep" },
+
+  { verse: 3, x: -24, z: -14, site: "altar", area: ALTARS, landmark: "at Cain's altar, an offering of the fruit of the ground" },
+  { verse: 4, x: -16, z: 16, site: "altar", area: ALTARS, landmark: "at Abel's altar, the firstlings of the flock" },
+  { verse: 5, x: -20, z: 0, site: "altar", area: ALTARS, landmark: "between the altars, where Cain's countenance fell" },
+  { verse: 6, x: -8, z: -6, site: "altar", area: ALTARS, landmark: "where it is asked, Why art thou wroth" },
+  { verse: 7, x: 0, z: 8, site: "altar", area: ALTARS, landmark: "at the door, where sin lieth" },
+
+  { verse: 8, x: 12, z: -2, site: "field", area: SLAIN, landmark: "in the field, where Cain rose up against Abel" },
+
+  { verse: 9, x: 22, z: 10, site: "blood", area: BLOOD, landmark: "where Cain says, Am I my brother's keeper" },
+  { verse: 10, x: 18, z: -14, site: "blood", area: BLOOD, landmark: "where the brother's blood cries from the ground" },
+  { verse: 11, x: 32, z: 2, site: "blood", area: BLOOD, landmark: "where the earth opened her mouth for the blood" },
+  { verse: 12, x: 42, z: 16, site: "blood", area: BLOOD, landmark: "where the ground will no longer yield its strength" },
+  { verse: 13, x: 40, z: -12, site: "blood", area: BLOOD, landmark: "where Cain says the punishment is greater than he can bear" },
+  { verse: 14, x: 52, z: 6, site: "blood", area: BLOOD, landmark: "where Cain is driven out, a fugitive and a vagabond" },
+
+  { verse: 15, x: 62, z: -8, site: "mark", area: MARK, landmark: "at the stone where the mark was set upon Cain" },
+
+  { verse: 16, x: 74, z: 8, site: "nod", area: NOD, landmark: "where the land of Nod begins, east of Eden" },
+
+  { verse: 17, x: 90, z: 30, site: "enoch", area: CITY, landmark: "before the gate of the city called Enoch" },
+  { verse: 18, x: 80, z: -4, site: "lineage", area: LINE, landmark: "along the line from Enoch to Lamech" },
+  { verse: 19, x: 108, z: 14, site: "lineage", area: LINE, landmark: "where Adah and Zillah are named" },
+
+  { verse: 20, x: 68, z: -24, site: "craft", area: CRAFT, landmark: "among the tents and the cattle of Jabal" },
+  { verse: 21, x: 82, z: -28, site: "craft", area: CRAFT, landmark: "where the harp and the organ were first handled" },
+  { verse: 22, x: 96, z: -20, site: "craft", area: CRAFT, landmark: "at the forge of Tubal-cain, brass and iron" },
+  { verse: 23, x: 122, z: 30, site: "lineage", area: LINE, landmark: "where Lamech speaks to his wives" },
+  { verse: 24, x: 112, z: -6, site: "lineage", area: LINE, landmark: "where vengeance is counted seventy and sevenfold" },
+
+  { verse: 25, x: 6, z: -28, site: "seth", area: SETH, landmark: "where Seth is named, another seed instead of Abel" },
+  { verse: 26, x: 18, z: -36, site: "seth", area: SETH, landmark: "where men began to call upon the name of the LORD" },
 ];
