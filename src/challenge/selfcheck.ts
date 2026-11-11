@@ -18,10 +18,10 @@ import { CARRY_LIMIT, HOUR_EVENING, HOUR_MORNING, NEAR_REACH, QUIET_SECONDS, WIT
 import { verseQuiz } from "./words";
 import { GENESIS_CHAPTERS } from "../data/canon";
 import { chapterSpec } from "../data/chapters";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_GENERATIONS, PLACE_NOD, PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "../data/era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "../data/identity";
 import { PLACEMENTS } from "../data/layout";
-import { SOUTH_ROAD_LECTERN } from "../data/play";
+import { ARK_LECTERN } from "../data/play";
 import { chapterPlacements, chapterTexts } from "../data/reading";
 
 function assert(cond: boolean, message: string): void {
@@ -183,13 +183,50 @@ export function checkRuleEngine(): void {
     "Genesis 3 uses the evening window",
   );
   assert(chapterPlacements(3).length === chapterTexts(3).length, "Genesis 3 places every verse east of Eden");
-  const seal3 = sealCopy(genesis3, chapterSpec(BOOK_GENESIS, 4), PLACE_EAST_OF_EDEN);
-  assert(seal3.offerNext === false && seal3.body.includes("path west"), "East of Eden sends the Seeker back toward camp");
-
   const genesis4 = chapterSpec(BOOK_GENESIS, 4);
-  assert(genesis4.rules.includes("witness") && genesis4.companion === "joel", "the camp witness is Joel");
+  const seal3 = sealCopy(genesis3, genesis4, PLACE_EAST_OF_EDEN);
+  assert(seal3.offerNext === false && seal3.body.includes("land of Nod"), "East of Eden sends the Seeker on toward Genesis 4");
+  assert(
+    genesis4.place === PLACE_NOD && genesis4.rules.join(",") === "near,witness" && genesis4.companion === "abel",
+    "Genesis 4 is a witness chapter in the land of Nod, and Abel walks with the Seeker",
+  );
+  assert(chapterPlacements(4).length === chapterTexts(4).length, "Genesis 4 places every verse in the land of Nod");
+  const nodSpots = chapterPlacements(4);
+  for (let i = 0; i < nodSpots.length; i++) {
+    for (let j = i + 1; j < nodSpots.length; j++) {
+      const apart = Math.hypot(nodSpots[i].x - nodSpots[j].x, nodSpots[i].z - nodSpots[j].z);
+      assert(apart >= 8, `Genesis 4 verses ${nodSpots[i].verse} and ${nodSpots[j].verse} are ${apart.toFixed(1)} m apart`);
+    }
+    assert(Math.abs(nodSpots[i].x) < 140 && Math.abs(nodSpots[i].z) < 140, `Genesis 4 verse ${nodSpots[i].verse} is on the ground`);
+  }
+  const genesis5 = chapterSpec(BOOK_GENESIS, 5);
+  assert(genesis5.place === PLACE_GENERATIONS && genesis5.rules.join(",") === "near,words", "Genesis 5 is read in the generations");
+  assert(chapterPlacements(5).length === chapterTexts(5).length, "Genesis 5 places every verse");
+  const seal4 = sealCopy(genesis4, genesis5, PLACE_NOD);
+  assert(seal4.offerNext === false && seal4.body.includes("camp"), "Nod sends the Seeker back toward camp for Genesis 5");
+  const seal4AtCamp = sealCopy(genesis4, genesis5, PLACE_SOUTH_ROAD);
+  assert(seal4AtCamp.offerNext === false && seal4AtCamp.body.includes("west side"), "camp sends the Seeker west to Genesis 5");
+  const seal5 = sealCopy(genesis5, chapterSpec(BOOK_GENESIS, 6), PLACE_GENERATIONS);
+  assert(seal5.offerNext === false && seal5.body.includes("camp"), "the generations send the Seeker back toward camp");
   const genesis6 = chapterSpec(BOOK_GENESIS, 6);
-  assert(genesis6.rules.includes("carry") && genesis6.lectern?.x === SOUTH_ROAD_LECTERN.x && genesis6.lectern.z === SOUTH_ROAD_LECTERN.z, "carry files at the camp lectern");
+  assert(genesis6.place === PLACE_THE_ARK && genesis6.rules.join(",") === "near,carry", "Genesis 6 is carried to the lectern at the ark");
+  assert(genesis6.lectern?.x === ARK_LECTERN.x && genesis6.lectern.z === ARK_LECTERN.z, "the ark lectern files a carried verse");
+  const arkSpots = chapterPlacements(6);
+  assert(arkSpots.length === chapterTexts(6).length, "Genesis 6 places every verse at the ark");
+  assert(new Set(arkSpots.map((p) => p.verse)).size === arkSpots.length, "Genesis 6 verses are numbered once");
+  for (let i = 0; i < arkSpots.length; i++) {
+    const a = arkSpots[i];
+    assert(Math.hypot(a.x - ARK_LECTERN.x, a.z - ARK_LECTERN.z) >= 8, `verse ${a.verse} stands on the lectern`);
+    for (let j = i + 1; j < arkSpots.length; j++) {
+      const b = arkSpots[j];
+      const apart = Math.hypot(a.x - b.x, a.z - b.z);
+      assert(apart >= 6, `Genesis 6 verses ${a.verse} and ${b.verse} are ${apart.toFixed(1)} apart`);
+    }
+  }
+  const seal5AtCamp = sealCopy(chapterSpec(BOOK_GENESIS, 5), genesis6, PLACE_SOUTH_ROAD);
+  assert(seal5AtCamp.offerNext === false && seal5AtCamp.body.includes("north-west"), "the camp sends the Seeker on toward the ark");
+  const seal6 = sealCopy(genesis6, chapterSpec(BOOK_GENESIS, 7), PLACE_THE_ARK);
+  assert(seal6.offerNext === false && seal6.body.includes("path east"), "the ark sends the Seeker back toward camp");
   const twelve = chapterSpec(BOOK_GENESIS, 12);
   assert(twelve.rules.join(",") === "near,words,carry" && twelve.lectern != null, "Genesis 12 finishes the line and then carries it");
 
@@ -232,6 +269,16 @@ export function checkRuleEngine(): void {
   assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_EAST_OF_EDEN, 2, ["genesis.2"]) === 3, "the camp path begins Genesis 3");
   assert(chapterAfterRoad(PLACE_EDEN, PLACE_EAST_OF_EDEN, 2, []) === 2, "an unsealed garden does not skip ahead");
   assert(chapterAfterRoad(PLACE_EAST_OF_EDEN, PLACE_EDEN, 3, ["genesis.2"]) === 3, "walking back does not change the chapter");
+  assert(chapterAfterRoad(PLACE_EAST_OF_EDEN, PLACE_NOD, 3, ["genesis.3"]) === 4, "the east path begins Genesis 4");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_NOD, 3, ["genesis.3"]) === 4, "the camp path begins Genesis 4");
+  assert(chapterAfterRoad(PLACE_EAST_OF_EDEN, PLACE_NOD, 3, []) === 3, "an unsealed fall does not skip ahead");
+  assert(chapterAfterRoad(PLACE_NOD, PLACE_EAST_OF_EDEN, 4, ["genesis.3"]) === 4, "walking back from Nod does not change the chapter");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_GENERATIONS, 4, ["genesis.4"]) === 5, "the west path begins Genesis 5");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_GENERATIONS, 4, []) === 4, "an unsealed camp does not skip to Genesis 5");
+  assert(chapterAfterRoad(PLACE_GENERATIONS, PLACE_SOUTH_ROAD, 5, ["genesis.4"]) === 5, "walking back from the generations does not change the chapter");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_THE_ARK, 5, ["genesis.5"]) === 6, "the north-west path begins Genesis 6");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_THE_ARK, 5, []) === 5, "an unsealed genealogy does not skip ahead");
+  assert(chapterAfterRoad(PLACE_THE_ARK, PLACE_SOUTH_ROAD, 6, ["genesis.5"]) === 6, "leaving the ark does not change the chapter");
 }
 
 checkRuleEngine();
