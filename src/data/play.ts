@@ -1,5 +1,5 @@
 import type { RuleId } from "../challenge/rules";
-import { PLACE_NOD, PLACE_SOUTH_ROAD } from "./era";
+import { PLACE_NOD, PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "./era";
 
 /** A point on the ground. Y comes from the place. */
 export interface GroundPoint {
@@ -38,12 +38,16 @@ export interface Purse {
 /** Where carried verses are set down. The camp mesh is built on this same point. */
 export const SOUTH_ROAD_LECTERN: GroundPoint = { x: -8, z: -6 };
 
+/** The lectern at the door of the ark. Genesis 6 files carried verses here. */
+export const ARK_LECTERN: GroundPoint = { x: 8, z: 20 };
+
 /**
  * Lectern for a place. A chapter that lists `carry` uses its own `lectern` if it
  * has one, and otherwise the point stored here. A place with no entry cannot host `carry`.
  */
 export const PLACE_LECTERN: Readonly<Record<string, GroundPoint>> = {
   [PLACE_SOUTH_ROAD]: SOUTH_ROAD_LECTERN,
+  [PLACE_THE_ARK]: ARK_LECTERN,
 };
 
 /**

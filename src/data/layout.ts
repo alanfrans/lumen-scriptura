@@ -37,7 +37,22 @@ export type Site =
   | "jared"
   | "methuselah"
   | "lamech"
-  | "noah";
+  | "noah"
+  | "multiply"
+  | "giants"
+  | "wickedness"
+  | "grief"
+  | "grace"
+  | "sons"
+  | "violence"
+  | "gopher"
+  | "measure"
+  | "ark"
+  | "flood"
+  | "covenant"
+  | "beasts"
+  | "stores"
+  | "obedience";
 
 export interface Placement {
   verse: number;
@@ -190,6 +205,58 @@ export const EAST_OF_EDEN_PLACEMENTS: readonly Placement[] = [
   { verse: 22, x: 84, z: 6, site: "gate", area: GATE, landmark: "within sight of the tree of life, which is kept from them" },
   { verse: 23, x: 112, z: 8, site: "gate", area: GATE, landmark: "outside the gate, where the man is sent to till the ground" },
   { verse: 24, x: 94, z: -4, site: "gate", area: GATE, landmark: "before the cherubim and the flaming sword" },
+];
+
+const MULTIPLY = "Where Men Multiplied";
+const RENOWN = "Men of Renown";
+const WICKED = "The Wickedness of Man";
+const GRIEF = "The Grief of the LORD";
+const HOUSE = "Noah's House";
+const SONS = "Shem, Ham, and Japheth";
+const VIOLENCE = "The Earth Filled with Violence";
+const GOPHER = "Gopher Wood and Pitch";
+const MEASURE = "The Measure of the Ark";
+const ARK = "The Ark";
+const FLOOD = "The Flood Foretold";
+const COVENANT = "The Covenant";
+const PAIRS = "Two of Every Sort";
+const STORES = "The Food Gathered";
+const DONE = "According to All He Commanded";
+
+/**
+ * Genesis 6, where the ark is built.
+ * +X is east, toward the camp. +Z is north.
+ * Any verse may be lifted. The lectern at the door is (8, 20), and these spots stay clear of it.
+ */
+export const ARK_PLACEMENTS: readonly Placement[] = [
+  { verse: 1, x: -16, z: -54, site: "multiply", area: MULTIPLY, landmark: "where men began to multiply on the face of the earth" },
+  { verse: 2, x: 14, z: -50, site: "multiply", area: MULTIPLY, landmark: "where the sons of God took wives of the daughters of men" },
+  { verse: 3, x: -2, z: -38, site: "multiply", area: MULTIPLY, landmark: "at the stone that numbers the days of man at a hundred and twenty years" },
+  { verse: 4, x: -30, z: -30, site: "giants", area: RENOWN, landmark: "among the standing stones, where the giants walked, men of renown" },
+
+  { verse: 5, x: 24, z: -34, site: "wickedness", area: WICKED, landmark: "at the broken altar, where every imagination of the heart was only evil" },
+  { verse: 6, x: 6, z: -22, site: "grief", area: GRIEF, landmark: "under the lone tree, where it grieved the LORD at his heart" },
+  { verse: 7, x: -18, z: -16, site: "wickedness", area: WICKED, landmark: "in the scorched circle, where the sentence of destruction was spoken" },
+
+  { verse: 8, x: -40, z: -8, site: "grace", area: HOUSE, landmark: "at the door of the house where Noah found grace" },
+  { verse: 9, x: -58, z: 8, site: "grace", area: HOUSE, landmark: "on the path where Noah walked with God" },
+  { verse: 10, x: -36, z: 18, site: "sons", area: SONS, landmark: "where Shem, Ham, and Japheth stand" },
+
+  { verse: 11, x: 40, z: -12, site: "violence", area: VIOLENCE, landmark: "by the overturned cart, where the earth was filled with violence" },
+  { verse: 12, x: 50, z: 8, site: "violence", area: VIOLENCE, landmark: "beside the road in, where all flesh had corrupted its way" },
+  { verse: 13, x: 36, z: 14, site: "violence", area: VIOLENCE, landmark: "at the warning stone, where the end of all flesh was declared" },
+
+  { verse: 14, x: -14, z: 6, site: "gopher", area: GOPHER, landmark: "beside the gopher logs and the pots of pitch" },
+  { verse: 15, x: 30, z: 8, site: "measure", area: MEASURE, landmark: "at the stakes that mark the length, the breadth, and the height" },
+  { verse: 16, x: 8, z: 44, site: "ark", area: ARK, landmark: "north of the ark, under the window finished above" },
+
+  { verse: 17, x: 42, z: 32, site: "flood", area: FLOOD, landmark: "in the dry basin, where a flood of waters was foretold" },
+  { verse: 18, x: -24, z: 28, site: "covenant", area: COVENANT, landmark: "west of the door, where the covenant was spoken over Noah's house" },
+
+  { verse: 19, x: -20, z: 50, site: "beasts", area: PAIRS, landmark: "at the west pen, where two of every sort were brought" },
+  { verse: 20, x: 28, z: 50, site: "beasts", area: PAIRS, landmark: "at the east pen, where fowl and cattle and creeping things came" },
+  { verse: 21, x: -40, z: 34, site: "stores", area: STORES, landmark: "among the jars and the sacks of food gathered for the ark" },
+  { verse: 22, x: 2, z: -4, site: "obedience", area: DONE, landmark: "in the worked yard, where Noah did according to all that God commanded" },
 ];
 
 const BOOK = "opening of the book";

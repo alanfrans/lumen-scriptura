@@ -11,7 +11,8 @@ The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GE
 | `jordan-hills` | The valley | Genesis 1 only |
 | `south-road` | South road camp | Every Genesis chapter that still has no scene of its own |
 | `nod` | Land of Nod | Genesis 4. Reached on foot from east of Eden, or from the camp |
-| `generations` | The generations | Genesis 5. Reached from the west side of the camp once Genesis 4 is sealed |
+| `generations` | The generations | Genesis 5. Reached from the west side of the camp, past the stone steps, once Genesis 4 is sealed |
+| `the-ark` | The ark | Genesis 6. Reached from the north-west side of the camp, past the tall sign, once Genesis 5 is sealed |
 
 Genesis 1–6 are written by hand in `CHAPTERS` (`src/data/chapters.ts`). Every other Genesis chapter is produced by `compileChapter` (`src/data/compile.ts`) from the chapter text and the chapter number. A hand entry always wins over the compiler.
 
@@ -181,7 +182,7 @@ The player arrives at the camp spawn (0, 36), on the road north of the fire, at 
 
 ## Authored chapters (Genesis 1–6)
 
-The hand list teaches one idea at a time. Chapter 1 is reach. Each next chapter adds a single extra rule: order, then evening, then a witness, then the words, then carrying the verse to the lectern. Genesis 5 reads those words on its own avenue. The compiler's "two rules when the chapter number is divisible by 3" does not apply to these six, including 3 and 6.
+The hand list teaches one idea at a time. Chapter 1 is reach. Each next chapter adds a single extra rule: order, then evening, then a witness, then the words, then carrying the verse to the lectern. Genesis 4 asks for that witness in the land of Nod. Genesis 5 reads the words on its own avenue. Genesis 6 carries verses at the ark. The compiler's "two rules when the chapter number is divisible by 3" does not apply to these six, including 3 and 6.
 
 ### Genesis 1 — The first day, and the six days
 
@@ -264,7 +265,7 @@ When the 31st verse lands, Hope is full, the beacon rises, and the map road can 
   - the tail of another verse in this same chapter
   - The three are rotated by `verse % 3`, so the true line is not always the first button.
   Press 1, 2, or 3. The right choice collects the verse and shows the verse card. Seth says to read the ending carefully, and he points at the nearest column still on the ground.
-- **Completed when.** 32/32 correct endings have been committed. The seal names the camp, where Genesis 6 is walked. The west path returns there. Joel then offers Genesis 6.
+- **Completed when.** 32/32 correct endings have been committed. The seal names the camp. The path west, past the stone steps, returns there. Joel then points to the north-west path, past the tall sign, which begins Genesis 6 at the ark.
 - **Collected.** The 32 verses, each only after a correct ending.
 - **Failure and retry.** A wrong button toasts "That is not how the line ends." and quiets every tablet for 2.5 seconds (`wordsQuiet` is one clock for the whole chapter). The verse stays down. The same three lines are offered on the next try. There is no lockout and no hint that reveals the tail.
 - **Passage tie.** The avenue is the book: Adam, Seth, Enos, Cainan, Mahalaleel, Jared, Enoch (no grave, because God took him), Methuselah's tall stone, Lamech, and Noah with his three sons. Play is reading the end of each entry, which in this chapter is usually the years or the death.
@@ -273,13 +274,13 @@ When the 31st verse lands, Hope is full, the beacon rises, and the map road can 
 ### Genesis 6 — Carry it to the lectern
 
 - **Passage.** Genesis 6. Violence fills the earth. Noah finds grace. God commands the ark, and the living things that must be brought into it. 22 verses, `genesis.6.1`–`genesis.6.22`.
-- **Place.** `south-road`. The lectern west of the fire is the drop-off.
+- **Place.** `the-ark`. The ground where the ark is built. The way in is the north-west path of the camp, past the tall sign, once Genesis 5 is sealed. The generations leave by the stone steps due west of the fire. Arriving begins this chapter and sets the clock to dawn. The lectern is at the door of the ark, `(8, 20)`. The path east returns to the camp. Pressing M here does nothing, because the map is a later task.
 - **Rules.** `["near", "carry"]`.
-- **What the player does.** Walk up to any tablet. It leaves the ground and enters the arms (the status line counts them). Up to three can be held. Press E at the lectern to set that armful into the Codex. Joel says: "The lectern is west of the fire. Carry a verse there. Three at a time." Order is not required, so the three in hand need not be consecutive. 22 verses take at least eight trips if every trip is full.
-- **Completed when.** All 22 are in `collected`, which means each one has been set on the lectern. An armful still in hand does not seal the chapter. Joel then offers Genesis 7.
+- **What the player does.** Walk up to any tablet. It leaves the ground and enters the arms (the status line counts them). Up to three can be held. Press E at the lectern by the door to set that armful into the Codex. Noah says: "The lectern stands at the door of the ark. Carry a verse there. Three at a time." Order is not required, so the three in hand need not be consecutive. 22 verses take at least eight trips if every trip is full. The verses lie along the story: the multiplying of men, the giants, the wickedness, Noah's house and his sons, the violence, the gopher wood and the measure, the ark itself, the flood, the covenant, the animals two by two, the stores, and the finished obedience.
+- **Completed when.** All 22 are in `collected`, which means each one has been set on the lectern. An armful still in hand does not seal the chapter. The path east returns to the camp. Joel offers Genesis 7 once the Seeker is back at the camp.
 - **Collected.** The 22 verses, at the lectern rather than at the tablet. The arms are empty again after a full seal.
 - **Failure and retry.** A fourth verse refuses with "Your arms are full. Set these verses on the lectern." and quiets for 2.5 seconds. Nothing already in the arms is dropped. Talking to the lectern empty-handed toasts "Carry a verse here, then set it down."
-- **Passage tie.** The command is to make the ark and bring the creatures and the food into it. The Seeker likewise picks the verses up and brings them to one piece of furniture, three at a time, rather than reading them in at the spot where they lie.
+- **Passage tie.** The command is to make the ark and bring the creatures and the food into it. The Seeker likewise picks the verses up and brings them to the lectern at the door, three at a time, rather than reading them in at the spot where they lie.
 
 ## Compiled chapters (Genesis 7–50)
 
@@ -396,7 +397,7 @@ Already in the game, and enough for chapters 1–50 as played today:
 | `Placement` (`verse`, `x`, `z`, `y?`, `site`, `area`, `landmark`, `owner?`) | `src/data/layout.ts`, `chapterPlacements` | Where a tablet stands, what Miriam calls it, and who owns it. |
 | Verse strings | `genesis1.ts`, `genesis-later.ts`, `genesis-rest.ts` via `chapterTexts` | The card, the quiz stem, and the compiler's input. |
 | `collected`, `carried`, `sealedChapters`, `rumored`, `hintRungs`, `guideFollows` | `SaveState` | Codex, arms, seals, hints, Joel. |
-| `LECTERN` | `src/world/south-road.ts` | The only drop-off. |
+| `LECTERN` | `src/world/south-road.ts` | The camp drop-off. A carry scene adds its own point in `PLACE_LECTERN`. |
 | `VERSE_PRICE`, stipend, key, jar, door, horse, watchman | `Game` and the valley world | Genesis 1's extra verbs. They are flags on the save, not chapter data. |
 
 The follow-up will likely need these, which are not data yet. They are why Genesis 1's price, the decoy lines, and the seal sentences are hardcoded in `game.ts`.

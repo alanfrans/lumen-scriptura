@@ -1,7 +1,8 @@
 import type { Scene } from "@babylonjs/core";
 import type { Palette } from "../art/materials";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_GENERATIONS, PLACE_NOD, PLACE_SOUTH_ROAD } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_GENERATIONS, PLACE_NOD, PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "../data/era";
 import { PLACE_JORDAN_HILLS } from "../data/identity";
+import { buildArk } from "./ark";
 import { buildEden } from "./eden";
 import { buildFall } from "./fall";
 import { buildGenerations } from "./generations";
@@ -17,5 +18,6 @@ export function loadPlace(scene: Scene, pal: Palette, id: string): World {
   if (id === PLACE_EAST_OF_EDEN) return buildFall(scene, pal);
   if (id === PLACE_NOD) return buildNod(scene, pal);
   if (id === PLACE_GENERATIONS) return buildGenerations(scene, pal);
+  if (id === PLACE_THE_ARK) return buildArk(scene, pal);
   throw new Error(`No place named ${id}`);
 }

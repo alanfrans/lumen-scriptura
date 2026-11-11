@@ -24,6 +24,12 @@ export const PLACE_NOD = "nod";
  */
 export const PLACE_GENERATIONS = "generations";
 
+/**
+ * The ground where Noah builds the ark while the earth is filled with violence.
+ * Reached from the north-west side of the camp once Genesis 5 is sealed.
+ */
+export const PLACE_THE_ARK = "the-ark";
+
 export interface EraPlace {
   id: string;
   name: string;
@@ -101,6 +107,15 @@ export const PATRIARCHS = {
       mapY: 0.84,
       latitude: 32,
       spawn: { x: -74, z: 0 },
+    },
+    {
+      id: PLACE_THE_ARK,
+      name: "The ark",
+      // Stored with the place. The travel map does not draw this ground; the path is the way in.
+      mapX: 0.14,
+      mapY: 0.72,
+      latitude: 32,
+      spawn: { x: 72, z: 0 },
     },
   ] as const satisfies readonly EraPlace[],
   roads: [
