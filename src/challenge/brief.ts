@@ -1,5 +1,5 @@
 import type { ChapterSpec } from "../data/chapters";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_SOUTH_ROAD, PLACE_THE_ARK, placeById } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_GENERATIONS, PLACE_NOD, PLACE_SOUTH_ROAD, PLACE_THE_ARK, placeById } from "../data/era";
 
 /** Joel's summary of the active rule list. One sentence per rule that needs saying. */
 export function ruleBrief(spec: ChapterSpec, following: boolean): string {
@@ -29,11 +29,30 @@ export function ruleBrief(spec: ChapterSpec, following: boolean): string {
 function pathNote(standingIn: string, nextPlace: string): string {
   if (standingIn === PLACE_EDEN && nextPlace === PLACE_SOUTH_ROAD) return " The path back leaves to the south.";
   if (standingIn === PLACE_EDEN && nextPlace === PLACE_EAST_OF_EDEN) return " A path leaves the east side of the garden.";
+  if (standingIn === PLACE_EAST_OF_EDEN && nextPlace === PLACE_NOD) {
+    return " A path leaves east of the gate, into the land of Nod. The verses open when someone stands with you.";
+  }
   if (standingIn === PLACE_EAST_OF_EDEN && nextPlace === PLACE_SOUTH_ROAD) {
     return " The path west returns to the garden, and the camp is south from there.";
   }
-  if (standingIn === PLACE_SOUTH_ROAD && nextPlace === PLACE_THE_ARK) return " A path leaves the west side of the camp.";
-  if (nextPlace === PLACE_THE_ARK) return " The path leaves the west side of the south-road camp.";
+  if (standingIn === PLACE_NOD && nextPlace === PLACE_GENERATIONS) {
+    return " The path west returns toward the garden, and the camp is south from there. A path leaves the west side of the camp, past the stone steps.";
+  }
+  if (standingIn === PLACE_NOD && nextPlace === PLACE_SOUTH_ROAD) {
+    return " The path west returns toward the garden, and the camp is south from there.";
+  }
+  if (standingIn === PLACE_SOUTH_ROAD && nextPlace === PLACE_GENERATIONS) {
+    return " A path leaves the west side of the camp, past the stone steps.";
+  }
+  if (standingIn === PLACE_GENERATIONS && nextPlace === PLACE_THE_ARK) {
+    return " The path west returns to the camp. From the camp, the north-west path leads to the ark.";
+  }
+  if (standingIn === PLACE_GENERATIONS && nextPlace === PLACE_SOUTH_ROAD) {
+    return " The path west returns to the camp.";
+  }
+  if (standingIn === PLACE_SOUTH_ROAD && nextPlace === PLACE_THE_ARK) {
+    return " A path leaves the north-west side of the camp, past the tall sign.";
+  }
   if (standingIn === PLACE_THE_ARK && nextPlace === PLACE_SOUTH_ROAD) return " The path east returns to the camp.";
   return "";
 }

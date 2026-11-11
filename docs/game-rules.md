@@ -4,12 +4,15 @@ Design for what the player does, finishes, and collects in each chapter that exi
 
 Where this document says a correct `words` answer collects the verse before it is carried, that was the old `takeVerse`. The system finishes the line, then carries it, on the chapters that list both.
 
-The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GENESIS_VERSES`). Two places exist (`src/data/era.ts`):
+The playable book is Genesis, 50 chapters, 1,533 verses (`GENESIS_CHAPTERS`, `GENESIS_VERSES`). Places in `src/data/era.ts` include:
 
 | Place id | Name | Who walks it |
 | --- | --- | --- |
 | `jordan-hills` | The valley | Genesis 1 only |
-| `south-road` | South road camp | Genesis 2–50, until a later scene todo gives a chapter its own place |
+| `south-road` | South road camp | Every Genesis chapter that still has no scene of its own |
+| `nod` | Land of Nod | Genesis 4. Reached on foot from east of Eden, or from the camp |
+| `generations` | The generations | Genesis 5. Reached from the west side of the camp, past the stone steps, once Genesis 4 is sealed |
+| `the-ark` | The ark | Genesis 6. Reached from the north-west side of the camp, past the tall sign, once Genesis 5 is sealed |
 
 Genesis 1–6 are written by hand in `CHAPTERS` (`src/data/chapters.ts`). Every other Genesis chapter is produced by `compileChapter` (`src/data/compile.ts`) from the chapter text and the chapter number. A hand entry always wins over the compiler.
 
@@ -179,7 +182,7 @@ The player arrives at the camp spawn (0, 36), on the road north of the fire, at 
 
 ## Authored chapters (Genesis 1–6)
 
-The hand list teaches one idea at a time. Chapter 1 is reach. Each next chapter adds a single extra rule: order, then evening, then a witness, then the words, then carrying the verse to the lectern. The witness and the words are at the camp. The carry is at the ark. The compiler's "two rules when the chapter number is divisible by 3" does not apply to these six, including 3 and 6.
+The hand list teaches one idea at a time. Chapter 1 is reach. Each next chapter adds a single extra rule: order, then evening, then a witness, then the words, then carrying the verse to the lectern. Genesis 4 asks for that witness in the land of Nod. Genesis 5 reads the words on its own avenue. Genesis 6 carries verses at the ark. The compiler's "two rules when the chapter number is divisible by 3" does not apply to these six, including 3 and 6.
 
 ### Genesis 1 — The first day, and the six days
 
@@ -235,42 +238,43 @@ When the 31st verse lands, Hope is full, the beacon rises, and the map road can 
 - **Place.** `east-of-eden`. The way in is the east path of the garden once Genesis 2 is sealed, or the north path of the camp. Both set the clock to dawn and begin this chapter.
 - **Rules.** `["near", "hour"]` with the evening window (15:36 through midnight to 04:48). The whole chapter uses one window. Verse 8 is not gated on its own.
 - **What the player does.** Be at a tablet while the clock is in the evening. At dawn, which is how either path delivers the Seeker, every column stays shut. Adam says the verses open in the evening. The Seeker can walk the ground while waiting. When the window opens, any tablet can be taken in any order, by walking up.
-- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. The path west returns to the garden. Joel offers Genesis 4 once the Seeker is back at the camp.
+- **Completed when.** 24/24 collected during open windows. A verse already collected stays collected after the window shuts. The path west returns to the garden. A path east of the gate leads to the land of Nod and begins Genesis 4.
 - **Collected.** The 24 verses.
 - **Failure and retry.** Outside the window the refusal is "This verse opens in the evening." No verse is lost if the window closes after it was collected. A quiz is not involved, so the dialog-versus-clock edge case does not come up. The wait is the whole of the retry.
 - **Passage tie.** The authored window matches the cool of the day, when the voice walks the garden, rather than the morning the road arrives in. Morning is the time these verses stay shut.
 
 ### Genesis 4 — A witness
 
-- **Passage.** Genesis 4. Cain and Abel, "Am I my brother's keeper?", the mark, and Seth. 26 verses, `genesis.4.1`–`genesis.4.26`.
-- **Place.** `south-road`. Joel is the only witness on this ground.
-- **Rules.** `["near", "witness"]`.
-- **What the player does.** Talk to Joel and choose "Walk with me." Stand on each tablet until he is within 1.52 of it. The column stays dark until he is. Order does not matter. He hangs back about a step, so sprinting off leaves the next tablet shut until he catches up.
-- **Completed when.** 26/26 collected with a person beside the tablet at the moment of the take. Joel then offers Genesis 5. Starting that chapter sends him back to the fire.
-- **Collected.** The 26 verses. Joel is not collected. `guideFollows` is a condition, not a prize.
-- **Failure and retry.** Alone, the prompt says "Someone must stand here with you." No coin, no quiet timer. Walk back toward Joel or wait for him.
-- **Passage tie.** The chapter turns on a brother who will not stand with his brother. The rule asks for the opposite: the verse will not open for a Seeker who is standing alone.
+- **Passage.** Genesis 4. Cain and Abel, "Am I my brother's keeper?", the mark, the city of Enoch, and Seth. 26 verses, `genesis.4.1`–`genesis.4.26`.
+- **Place.** `nod`, the land of Nod, east of Eden. The way in is the east path past the gate once Genesis 3 is sealed, or the south-east path of the camp. Both set the clock to dawn and begin this chapter. Spawn is on the west path, near Abel.
+- **Rules.** `["near", "witness"]`. Abel is the companion. Cain, Adam, and Eve stand on this ground and will talk, and none of them is close enough to a tablet to open it. Cain will not walk with you.
+- **What the player does.** Talk to Abel and choose "Walk with me." Stand on each tablet until he is within 1.52 of it. The column stays dark until he is. Order does not matter. He hangs back about a step, so sprinting off leaves the next tablet shut until he catches up.
+- **Completed when.** 26/26 collected with a person beside the tablet at the moment of the take. A Hope Beacon rises over the city of Enoch. The path west returns toward the garden. Genesis 5 is the avenue west of the camp, and Joel does not begin that chapter at the fire. Beginning that chapter clears `guideFollows`.
+- **Collected.** The 26 verses. Abel is not collected. `guideFollows` is a condition, not a prize.
+- **Failure and retry.** Alone, the prompt says "Someone must stand here with you." No coin, no quiet timer. Walk back toward Abel or wait for him.
+- **Passage tie.** The chapter turns on a brother who will not stand with his brother. The rule asks for the opposite: the verse will not open for a Seeker who is standing alone. Abel will.
 
 ### Genesis 5 — The words
 
 - **Passage.** Genesis 5. The book of the generations of Adam, each life ending in "and he died," through Noah's sons. 32 verses, `genesis.5.1`–`genesis.5.32`.
-- **Place.** `south-road`.
-- **Rules.** `["near", "words"]`.
+- **Place.** `generations`, the stone avenue west of the camp. The way in is the west path of the camp once Genesis 4 is sealed. Arriving begins this chapter and sets the clock to dawn. Spawn is the west threshold, looking east. The path back to the camp is that same west gate. Seth keeps the book. Enoch stands by the empty ring. Noah stands with the stones of Shem, Ham, and Japheth.
+- **Rules.** `["near", "words"]`. Any verse may be finished in any order, at any hour. No lectern and no companion: the words are the whole added rule.
 - **What the player does.** Walk up to a tablet. The world pauses on a dialog titled `Genesis 5:N`. The stem is the verse with its tail cut off. The tail length is `clamp(floor(wordCount / 3), 3, 7)`. Three choices appear:
   - the true tail
   - one corrupted tail: the first match among God→man, LORD→serpent, earth→sea, day→night, man→beast, or else the line "and it was not so."
-  - a fixed third line, "and the morning and the evening were the first day." on even verses and "and he called the darkness Day." on odd verses
+  - the tail of another verse in this same chapter
   - The three are rotated by `verse % 3`, so the true line is not always the first button.
-  Press 1, 2, or 3. The right choice collects the verse and shows the verse card. Joel's summary: "Read the ending carefully. Only one of the three lines is the verse."
-- **Completed when.** 32/32 correct endings have been committed. The seal names the ark, and the path that leaves the west side of the camp. Taking that path begins Genesis 6.
+  Press 1, 2, or 3. The right choice collects the verse and shows the verse card. Seth says to read the ending carefully, and he points at the nearest column still on the ground.
+- **Completed when.** 32/32 correct endings have been committed. The seal names the camp. The path west, past the stone steps, returns there. Joel then points to the north-west path, past the tall sign, which begins Genesis 6 at the ark.
 - **Collected.** The 32 verses, each only after a correct ending.
 - **Failure and retry.** A wrong button toasts "That is not how the line ends." and quiets every tablet for 2.5 seconds (`wordsQuiet` is one clock for the whole chapter). The verse stays down. The same three lines are offered on the next try. There is no lockout and no hint that reveals the tail.
-- **Passage tie.** The chapter calls itself a book of generations. Play is reading the end of each entry, which in this chapter is usually the years or the death. The two fixed decoys are still sentences from Genesis 1. That is a real mismatch for a genealogy; see [open questions](#open-questions).
+- **Passage tie.** The avenue is the book: Adam, Seth, Enos, Cainan, Mahalaleel, Jared, Enoch (no grave, because God took him), Methuselah's tall stone, Lamech, and Noah with his three sons. Play is reading the end of each entry, which in this chapter is usually the years or the death.
+- **Data.** `ChapterSpec` place `generations`, rules `near`, `words`. Placements are `GENERATIONS_PLACEMENTS`. No hour, lectern, companion, or owned verse.
 
 ### Genesis 6 — Carry it to the lectern
 
 - **Passage.** Genesis 6. Violence fills the earth. Noah finds grace. God commands the ark, and the living things that must be brought into it. 22 verses, `genesis.6.1`–`genesis.6.22`.
-- **Place.** `the-ark`. The ground where the ark is built. The way in is the west path of the camp once Genesis 5 is sealed. Arriving begins this chapter and sets the clock to dawn. The lectern is at the door of the ark, `(8, 20)`. The path east returns to the camp. Pressing M here does nothing, because the map is a later task.
+- **Place.** `the-ark`. The ground where the ark is built. The way in is the north-west path of the camp, past the tall sign, once Genesis 5 is sealed. The generations leave by the stone steps due west of the fire. Arriving begins this chapter and sets the clock to dawn. The lectern is at the door of the ark, `(8, 20)`. The path east returns to the camp. Pressing M here does nothing, because the map is a later task.
 - **Rules.** `["near", "carry"]`.
 - **What the player does.** Walk up to any tablet. It leaves the ground and enters the arms (the status line counts them). Up to three can be held. Press E at the lectern by the door to set that armful into the Codex. Noah says: "The lectern stands at the door of the ark. Carry a verse there. Three at a time." Order is not required, so the three in hand need not be consecutive. 22 verses take at least eight trips if every trip is full. The verses lie along the story: the multiplying of men, the giants, the wickedness, Noah's house and his sons, the violence, the gopher wood and the measure, the ark itself, the flood, the covenant, the animals two by two, the stores, and the finished obedience.
 - **Completed when.** All 22 are in `collected`, which means each one has been set on the lectern. An armful still in hand does not seal the chapter. The path east returns to the camp. Joel offers Genesis 7 once the Seeker is back at the camp.

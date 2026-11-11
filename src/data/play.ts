@@ -1,5 +1,5 @@
 import type { RuleId } from "../challenge/rules";
-import { PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "./era";
+import { PLACE_NOD, PLACE_SOUTH_ROAD, PLACE_THE_ARK } from "./era";
 
 /** A point on the ground. Y comes from the place. */
 export interface GroundPoint {
@@ -57,6 +57,7 @@ export const PLACE_LECTERN: Readonly<Record<string, GroundPoint>> = {
  */
 export const PLACE_COMPANION: Readonly<Record<string, string>> = {
   [PLACE_SOUTH_ROAD]: "joel",
+  [PLACE_NOD]: "abel",
 };
 
 interface PlacePlay {

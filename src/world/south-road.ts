@@ -12,8 +12,14 @@ export const EAST_PATH = { x: 26, z: 2.2 };
 /** North along the road, where the path east of Eden leaves once Genesis 2 is sealed. */
 export const NORTH_PATH = { x: 4.6, z: 48 };
 
-/** West of the camp, where the path to the ark leaves once Genesis 5 is sealed. */
-export const ARK_PATH = { x: -32, z: 14 };
+/** South-east of the fire, where the path to the land of Nod leaves once Genesis 3 is sealed. */
+export const NOD_PATH = { x: 24, z: -18 };
+
+/** Due west of the fire, where the path to the generations leaves once Genesis 4 is sealed. Stone steps mark it. */
+export const WEST_PATH = { x: -26, z: 2.2 };
+
+/** North-west of the camp, where the path to the ark leaves once Genesis 5 is sealed. A tall sign marks it. */
+export const ARK_PATH = { x: -32, z: 18 };
 
 /** A small camp past the south edge of the valley map. Flat ground, one road north. */
 export function buildSouthRoad(scene: Scene, pal: Palette): World {
@@ -148,6 +154,17 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
     step.material = stone;
   }
 
+  const nodTrack = keep(MeshBuilder.CreateBox("nod-track", { width: 2.4, height: 0.04, depth: 16 }, scene));
+  nodTrack.position.set(24, 0.025, -12);
+  nodTrack.material = dirt;
+  const nodPost = keep(MeshBuilder.CreateBox("nod-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  nodPost.position.set(NOD_PATH.x, 0.85, NOD_PATH.z);
+  nodPost.material = wood;
+  const nodBoard = keep(MeshBuilder.CreateBox("nod-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  nodBoard.position.set(NOD_PATH.x, 1.55, NOD_PATH.z);
+  nodBoard.material = wood;
+  solid(NOD_PATH.x, NOD_PATH.z, 0.5, 0.5);
+
   const northPost = keep(MeshBuilder.CreateBox("north-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
   northPost.position.set(NORTH_PATH.x, 0.85, NORTH_PATH.z);
   northPost.material = wood;
@@ -156,16 +173,33 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
   northBoard.material = wood;
   solid(NORTH_PATH.x, NORTH_PATH.z, 0.5, 0.5);
 
-  const westTrack = keep(MeshBuilder.CreateBox("ark-track", { width: 24, height: 0.04, depth: 2.4 }, scene));
-  westTrack.position.set(-20, 0.025, ARK_PATH.z);
+  const westTrack = keep(MeshBuilder.CreateBox("west-track", { width: 20, height: 0.04, depth: 2.4 }, scene));
+  westTrack.position.set(-22, 0.025, WEST_PATH.z);
   westTrack.material = dirt;
-  const arkPost = keep(MeshBuilder.CreateBox("ark-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
-  arkPost.position.set(ARK_PATH.x, 0.85, ARK_PATH.z);
-  arkPost.material = wood;
-  const arkBoard = keep(MeshBuilder.CreateBox("ark-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
-  arkBoard.position.set(ARK_PATH.x, 1.55, ARK_PATH.z);
-  arkBoard.material = wood;
-  solid(ARK_PATH.x, ARK_PATH.z, 0.5, 0.5);
+  const westPost = keep(MeshBuilder.CreateBox("west-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  westPost.position.set(WEST_PATH.x, 0.85, WEST_PATH.z + 2.1);
+  westPost.material = wood;
+  const westBoard = keep(MeshBuilder.CreateBox("west-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  westBoard.position.set(WEST_PATH.x, 1.55, WEST_PATH.z + 2.1);
+  westBoard.material = wood;
+  solid(WEST_PATH.x, WEST_PATH.z + 2.1, 0.5, 0.5);
+  for (const x of [-16, -20, -24, -28]) {
+    const step = keep(MeshBuilder.CreateBox("west-step", { width: 0.7, height: 0.06, depth: 0.45 }, scene));
+    step.position.set(x, 0.04, WEST_PATH.z);
+    step.material = stone;
+  }
+
+  const arkTrack = keep(MeshBuilder.CreateBox("ark-track", { width: 22, height: 0.04, depth: 2.4 }, scene));
+  arkTrack.position.set(-21, 0.025, ARK_PATH.z);
+  arkTrack.material = dirt;
+  const arkWood = pal.mat("ark-sign", [0.22, 0.16, 0.1], "wood");
+  const arkPost = keep(MeshBuilder.CreateBox("ark-post", { width: 0.14, height: 2.5, depth: 0.14 }, scene));
+  arkPost.position.set(ARK_PATH.x, 1.25, ARK_PATH.z + 2.2);
+  arkPost.material = arkWood;
+  const arkBoard = keep(MeshBuilder.CreateBox("ark-board", { width: 1.35, height: 0.5, depth: 0.08 }, scene));
+  arkBoard.position.set(ARK_PATH.x, 2.3, ARK_PATH.z + 2.2);
+  arkBoard.material = arkWood;
+  solid(ARK_PATH.x, ARK_PATH.z + 2.2, 0.5, 0.5);
 
   const lectern = keep(MeshBuilder.CreateBox("lectern", { width: 0.7, height: 0.9, depth: 0.55 }, scene));
   lectern.position.set(LECTERN.x, 0.45, LECTERN.z);

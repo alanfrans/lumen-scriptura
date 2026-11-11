@@ -13,8 +13,20 @@ export const PLACE_EDEN = "eden";
 export const PLACE_EAST_OF_EDEN = "east-of-eden";
 
 /**
+ * The field of the brothers, and the land where Cain dwelt, east of Eden.
+ * Reached on foot once Genesis 3 is in the Codex.
+ */
+export const PLACE_NOD = "nod";
+
+/**
+ * The book of the generations of Adam, written out as a stone avenue.
+ * Reached on foot from the south-road camp once Genesis 4 is in the Codex.
+ */
+export const PLACE_GENERATIONS = "generations";
+
+/**
  * The ground where Noah builds the ark while the earth is filled with violence.
- * Reached on foot from the west side of the camp once Genesis 5 is sealed.
+ * Reached from the north-west side of the camp once Genesis 5 is sealed.
  */
 export const PLACE_THE_ARK = "the-ark";
 
@@ -79,11 +91,29 @@ export const PATRIARCHS = {
       spawn: { x: -74, z: 0 },
     },
     {
+      id: PLACE_NOD,
+      name: "Land of Nod",
+      // Stored with the place. The travel map does not draw this ground; the path is the way in.
+      mapX: 0.97,
+      mapY: 0.48,
+      latitude: 32,
+      spawn: { x: -74, z: 0 },
+    },
+    {
+      id: PLACE_GENERATIONS,
+      name: "The generations",
+      // Stored with the place. The travel map does not draw the avenue; the west path from the camp is the way in.
+      mapX: 0.08,
+      mapY: 0.84,
+      latitude: 32,
+      spawn: { x: -74, z: 0 },
+    },
+    {
       id: PLACE_THE_ARK,
       name: "The ark",
       // Stored with the place. The travel map does not draw this ground; the path is the way in.
-      mapX: 0.08,
-      mapY: 0.84,
+      mapX: 0.14,
+      mapY: 0.72,
       latitude: 32,
       spawn: { x: 72, z: 0 },
     },
