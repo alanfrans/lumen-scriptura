@@ -15,6 +15,9 @@ export const NORTH_PATH = { x: 4.6, z: 48 };
 /** South-east of the fire, where the path to the land of Nod leaves once Genesis 3 is sealed. */
 export const NOD_PATH = { x: 24, z: -18 };
 
+/** West of the fire, where the path to the book of the generations leaves once Genesis 4 is sealed. */
+export const WEST_PATH = { x: -26, z: 2.2 };
+
 /** A small camp past the south edge of the valley map. Flat ground, one road north. */
 export function buildSouthRoad(scene: Scene, pal: Palette): World {
   const colliders: Box[] = [];
@@ -166,6 +169,22 @@ export function buildSouthRoad(scene: Scene, pal: Palette): World {
   northBoard.position.set(NORTH_PATH.x, 1.55, NORTH_PATH.z);
   northBoard.material = wood;
   solid(NORTH_PATH.x, NORTH_PATH.z, 0.5, 0.5);
+
+  const westTrack = keep(MeshBuilder.CreateBox("west-track", { width: 20, height: 0.04, depth: 2.4 }, scene));
+  westTrack.position.set(-22, 0.025, WEST_PATH.z);
+  westTrack.material = dirt;
+  const westPost = keep(MeshBuilder.CreateBox("west-post", { width: 0.12, height: 1.7, depth: 0.12 }, scene));
+  westPost.position.set(WEST_PATH.x, 0.85, WEST_PATH.z + 2.1);
+  westPost.material = wood;
+  const westBoard = keep(MeshBuilder.CreateBox("west-board", { width: 1.15, height: 0.42, depth: 0.08 }, scene));
+  westBoard.position.set(WEST_PATH.x, 1.55, WEST_PATH.z + 2.1);
+  westBoard.material = wood;
+  solid(WEST_PATH.x, WEST_PATH.z + 2.1, 0.5, 0.5);
+  for (const x of [-16, -20, -24, -28]) {
+    const step = keep(MeshBuilder.CreateBox("west-step", { width: 0.7, height: 0.06, depth: 0.45 }, scene));
+    step.position.set(x, 0.04, WEST_PATH.z);
+    step.material = stone;
+  }
 
   const lectern = keep(MeshBuilder.CreateBox("lectern", { width: 0.7, height: 0.9, depth: 0.55 }, scene));
   lectern.position.set(LECTERN.x, 0.45, LECTERN.z);

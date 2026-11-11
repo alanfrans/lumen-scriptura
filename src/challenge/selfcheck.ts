@@ -18,7 +18,7 @@ import { CARRY_LIMIT, HOUR_EVENING, HOUR_MORNING, NEAR_REACH, QUIET_SECONDS, WIT
 import { verseQuiz } from "./words";
 import { GENESIS_CHAPTERS } from "../data/canon";
 import { chapterSpec } from "../data/chapters";
-import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_NOD, PLACE_SOUTH_ROAD } from "../data/era";
+import { PLACE_EAST_OF_EDEN, PLACE_EDEN, PLACE_GENERATIONS, PLACE_NOD, PLACE_SOUTH_ROAD } from "../data/era";
 import { BOOK_GENESIS, PLACE_JORDAN_HILLS } from "../data/identity";
 import { PLACEMENTS } from "../data/layout";
 import { SOUTH_ROAD_LECTERN } from "../data/play";
@@ -199,8 +199,15 @@ export function checkRuleEngine(): void {
     }
     assert(Math.abs(nodSpots[i].x) < 140 && Math.abs(nodSpots[i].z) < 140, `Genesis 4 verse ${nodSpots[i].verse} is on the ground`);
   }
-  const seal4 = sealCopy(genesis4, chapterSpec(BOOK_GENESIS, 5), PLACE_NOD);
+  const genesis5 = chapterSpec(BOOK_GENESIS, 5);
+  assert(genesis5.place === PLACE_GENERATIONS && genesis5.rules.join(",") === "near,words", "Genesis 5 is read in the generations");
+  assert(chapterPlacements(5).length === chapterTexts(5).length, "Genesis 5 places every verse");
+  const seal4 = sealCopy(genesis4, genesis5, PLACE_NOD);
   assert(seal4.offerNext === false && seal4.body.includes("camp"), "Nod sends the Seeker back toward camp for Genesis 5");
+  const seal4AtCamp = sealCopy(genesis4, genesis5, PLACE_SOUTH_ROAD);
+  assert(seal4AtCamp.offerNext === false && seal4AtCamp.body.includes("west side"), "camp sends the Seeker west to Genesis 5");
+  const seal5 = sealCopy(genesis5, chapterSpec(BOOK_GENESIS, 6), PLACE_GENERATIONS);
+  assert(seal5.offerNext === false && seal5.body.includes("camp"), "the generations send the Seeker back toward camp");
   const genesis6 = chapterSpec(BOOK_GENESIS, 6);
   assert(genesis6.rules.includes("carry") && genesis6.lectern?.x === SOUTH_ROAD_LECTERN.x && genesis6.lectern.z === SOUTH_ROAD_LECTERN.z, "carry files at the camp lectern");
   const twelve = chapterSpec(BOOK_GENESIS, 12);
@@ -249,6 +256,9 @@ export function checkRuleEngine(): void {
   assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_NOD, 3, ["genesis.3"]) === 4, "the camp path begins Genesis 4");
   assert(chapterAfterRoad(PLACE_EAST_OF_EDEN, PLACE_NOD, 3, []) === 3, "an unsealed fall does not skip ahead");
   assert(chapterAfterRoad(PLACE_NOD, PLACE_EAST_OF_EDEN, 4, ["genesis.3"]) === 4, "walking back from Nod does not change the chapter");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_GENERATIONS, 4, ["genesis.4"]) === 5, "the west path begins Genesis 5");
+  assert(chapterAfterRoad(PLACE_SOUTH_ROAD, PLACE_GENERATIONS, 4, []) === 4, "an unsealed camp does not skip to Genesis 5");
+  assert(chapterAfterRoad(PLACE_GENERATIONS, PLACE_SOUTH_ROAD, 5, ["genesis.4"]) === 5, "walking back from the generations does not change the chapter");
 }
 
 checkRuleEngine();

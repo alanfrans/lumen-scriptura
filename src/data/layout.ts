@@ -28,7 +28,16 @@ export type Site =
   | "enoch"
   | "lineage"
   | "craft"
-  | "seth";
+  | "seth"
+  | "book"
+  | "adam"
+  | "enos"
+  | "cainan"
+  | "mahalaleel"
+  | "jared"
+  | "methuselah"
+  | "lamech"
+  | "noah";
 
 export interface Placement {
   verse: number;
@@ -181,6 +190,68 @@ export const EAST_OF_EDEN_PLACEMENTS: readonly Placement[] = [
   { verse: 22, x: 84, z: 6, site: "gate", area: GATE, landmark: "within sight of the tree of life, which is kept from them" },
   { verse: 23, x: 112, z: 8, site: "gate", area: GATE, landmark: "outside the gate, where the man is sent to till the ground" },
   { verse: 24, x: 94, z: -4, site: "gate", area: GATE, landmark: "before the cherubim and the flaming sword" },
+];
+
+const BOOK = "opening of the book";
+const ADAM_LINE = "years of Adam";
+const SETH_LINE = "years of Seth";
+const ENOS_LINE = "years of Enos";
+const CAINAN_LINE = "years of Cainan";
+const MAHALALEEL_LINE = "years of Mahalaleel";
+const JARED_LINE = "years of Jared";
+const ENOCH_LINE = "court of Enoch";
+const METHUSELAH_LINE = "stone of Methuselah";
+const LAMECH_LINE = "years of Lamech";
+const NOAH_LINE = "household of Noah";
+
+/**
+ * Genesis 5, the book of the generations of Adam.
+ * The avenue runs east from the camp path. Any verse may be finished in any order.
+ * Kept clear of steles, the stone book, and the people who keep them.
+ */
+export const GENERATIONS_PLACEMENTS: readonly Placement[] = [
+  { verse: 1, x: -62, z: 7, site: "book", area: BOOK, landmark: "on the left of the stone book, where the generations of Adam begin" },
+  { verse: 2, x: -54, z: -7, site: "book", area: BOOK, landmark: "on the right of the stone book, where they are called Adam" },
+
+  { verse: 3, x: -48, z: 8, site: "adam", area: ADAM_LINE, landmark: "where Adam begat a son in his own likeness, and called his name Seth" },
+  { verse: 4, x: -40, z: 8, site: "adam", area: ADAM_LINE, landmark: "beside the years of Adam after Seth, when he begat sons and daughters" },
+  { verse: 5, x: -44, z: -9, site: "adam", area: ADAM_LINE, landmark: "at Adam's stone, where all his days end: and he died" },
+
+  { verse: 6, x: -34, z: -8, site: "seth", area: SETH_LINE, landmark: "where Seth begat Enos" },
+  { verse: 7, x: -26, z: -8, site: "seth", area: SETH_LINE, landmark: "beside the years of Seth, and the sons and daughters born after Enos" },
+  { verse: 8, x: -30, z: 9, site: "seth", area: SETH_LINE, landmark: "at Seth's stone: nine hundred and twelve years, and he died" },
+
+  { verse: 9, x: -18, z: 8, site: "enos", area: ENOS_LINE, landmark: "where Enos begat Cainan" },
+  { verse: 10, x: -10, z: 8, site: "enos", area: ENOS_LINE, landmark: "beside the years of Enos after Cainan" },
+  { verse: 11, x: -14, z: -9, site: "enos", area: ENOS_LINE, landmark: "at Enos's stone: nine hundred and five years, and he died" },
+
+  { verse: 12, x: -2, z: -8, site: "cainan", area: CAINAN_LINE, landmark: "where Cainan begat Mahalaleel" },
+  { verse: 13, x: 6, z: -8, site: "cainan", area: CAINAN_LINE, landmark: "beside the years of Cainan after Mahalaleel" },
+  { verse: 14, x: 2, z: 9, site: "cainan", area: CAINAN_LINE, landmark: "at Cainan's stone: nine hundred and ten years, and he died" },
+
+  { verse: 15, x: 14, z: 8, site: "mahalaleel", area: MAHALALEEL_LINE, landmark: "where Mahalaleel begat Jared" },
+  { verse: 16, x: 22, z: 8, site: "mahalaleel", area: MAHALALEEL_LINE, landmark: "beside the years of Mahalaleel after Jared" },
+  { verse: 17, x: 18, z: -9, site: "mahalaleel", area: MAHALALEEL_LINE, landmark: "at Mahalaleel's stone: eight hundred ninety and five years, and he died" },
+
+  { verse: 18, x: 30, z: -8, site: "jared", area: JARED_LINE, landmark: "where Jared begat Enoch" },
+  { verse: 19, x: 38, z: -8, site: "jared", area: JARED_LINE, landmark: "beside the years of Jared after Enoch" },
+  { verse: 20, x: 34, z: 9, site: "jared", area: JARED_LINE, landmark: "at Jared's stone: nine hundred sixty and two years, and he died" },
+
+  { verse: 21, x: 46, z: 8, site: "enoch", area: ENOCH_LINE, landmark: "where Enoch begat Methuselah" },
+  { verse: 22, x: 54, z: 11, site: "enoch", area: ENOCH_LINE, landmark: "on the path where Enoch walked with God" },
+  { verse: 23, x: 60, z: 6, site: "enoch", area: ENOCH_LINE, landmark: "where the days of Enoch are counted, three hundred sixty and five years" },
+  { verse: 24, x: 52, z: -10, site: "enoch", area: ENOCH_LINE, landmark: "in the empty ring, where Enoch was not, for God took him" },
+
+  { verse: 25, x: 66, z: -8, site: "methuselah", area: METHUSELAH_LINE, landmark: "where Methuselah begat Lamech" },
+  { verse: 26, x: 74, z: -8, site: "methuselah", area: METHUSELAH_LINE, landmark: "beside the long years of Methuselah after Lamech" },
+  { verse: 27, x: 70, z: 10, site: "methuselah", area: METHUSELAH_LINE, landmark: "at the foot of the tall stone: nine hundred sixty and nine years, and he died" },
+
+  { verse: 28, x: 82, z: 8, site: "lamech", area: LAMECH_LINE, landmark: "where Lamech begat a son" },
+  { verse: 29, x: 90, z: 8, site: "lamech", area: LAMECH_LINE, landmark: "where the son is named Noah, who shall comfort us" },
+  { verse: 30, x: 82, z: -9, site: "lamech", area: LAMECH_LINE, landmark: "beside the years of Lamech after Noah" },
+  { verse: 31, x: 90, z: -9, site: "lamech", area: LAMECH_LINE, landmark: "at Lamech's stone: seven hundred seventy and seven years, and he died" },
+
+  { verse: 32, x: 104, z: 4, site: "noah", area: NOAH_LINE, landmark: "before Shem, Ham, and Japheth, the three sons of Noah" },
 ];
 
 const BIRTH = "Birth of the Brothers";

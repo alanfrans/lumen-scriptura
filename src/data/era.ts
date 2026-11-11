@@ -18,6 +18,12 @@ export const PLACE_EAST_OF_EDEN = "east-of-eden";
  */
 export const PLACE_NOD = "nod";
 
+/**
+ * The book of the generations of Adam, written out as a stone avenue.
+ * Reached on foot from the south-road camp once Genesis 4 is in the Codex.
+ */
+export const PLACE_GENERATIONS = "generations";
+
 export interface EraPlace {
   id: string;
   name: string;
@@ -84,6 +90,15 @@ export const PATRIARCHS = {
       // Stored with the place. The travel map does not draw this ground; the path is the way in.
       mapX: 0.97,
       mapY: 0.48,
+      latitude: 32,
+      spawn: { x: -74, z: 0 },
+    },
+    {
+      id: PLACE_GENERATIONS,
+      name: "The generations",
+      // Stored with the place. The travel map does not draw the avenue; the west path from the camp is the way in.
+      mapX: 0.08,
+      mapY: 0.84,
       latitude: 32,
       spawn: { x: -74, z: 0 },
     },
