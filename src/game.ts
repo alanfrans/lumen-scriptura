@@ -47,6 +47,9 @@ import type { OwnedVerse, Purse } from "./data/play";
 import { chapterPlacements, chapterTexts } from "./data/reading";
 import { Hud } from "./hud";
 import { clearState, loadState, saveState, STIPEND_PERIOD, type SaveState } from "./save";
+import { splatPrototypeEnabled } from "./splats/flag";
+import { GROVE } from "./splats/grove-manifest";
+import type { SplatPrototype } from "./splats/prototype";
 import { resolveCircle } from "./world/collision";
 import { ARK_BEACON, ARK_EAST } from "./world/ark";
 import { EDEN_EAST, EDEN_PATH } from "./world/eden";
@@ -138,10 +141,20 @@ export class Game {
   private viewRadius = 8;
   private travelOpen = false;
   private travelDest = "";
+  /** Gaussian-splat grove. Off unless the page is opened with `?splats=1`. */
+  private readonly splatMode = splatPrototypeEnabled();
+  private splatPrototype: SplatPrototype | null = null;
   private compass: (XZ & { until: number }) | null = null;
   private readonly watch = { wp: 0, chasing: false, cooldown: 0 };
 
   constructor(private readonly canvas: HTMLCanvasElement) {
+    if (this.splatMode) {
+      this.state.place = PLACE_EDEN;
+      this.state.book = BOOK_GENESIS;
+      this.state.chapter = 2;
+      this.state.px = GROVE.spawn.x;
+      this.state.pz = GROVE.spawn.z;
+    }
     this.engine = new Engine(canvas, true, { stencil: true });
     this.scene = new Scene(this.engine);
     this.scene.fogMode = Scene.FOGMODE_EXP2;
@@ -189,7 +202,8 @@ export class Game {
     this.camera.inertia = 0;
     this.camera.minZ = 0.05;
     this.camera.maxZ = 1200;
-    this.setupLook();
+    // The film pass blits the scene off the canvas and drops the depth the splats need.
+    if (!this.splatMode) this.setupLook();
     this.canvas.addEventListener(
       "wheel",
       (e) => {
@@ -204,8 +218,10 @@ export class Game {
     this.bindInput();
     this.placeLevelPin();
     this.retitle();
+    if (this.splatMode) this.bootSplatPrototype();
 
     this.engine.runRenderLoop(() => {
+      if (this.splatPrototype?.busy) return;
       const dt = Math.min(this.engine.getDeltaTime() / 1000, 0.05);
       if (this.started) this.update(dt);
       else {
@@ -216,8 +232,44 @@ export class Game {
         this.world.tick?.(dt, this.time);
       }
       this.scene.render();
+      this.splatPrototype?.composite();
     });
-    window.addEventListener("resize", () => this.engine.resize());
+    window.addEventListener("resize", () => {
+      this.engine.resize();
+      this.splatPrototype?.resize();
+    });
+  }
+
+  /** Third person, in the grove, with Spark loaded beside the existing scene. */
+  private bootSplatPrototype(): void {
+    this.start();
+    this.setThirdPerson(true);
+    // South of the grove, looking north, so the tiled trees sit around the character.
+    this.camera.alpha = -Math.PI / 2;
+    this.camera.beta = 1.2;
+    this.camera.upperRadiusLimit = 24;
+    this.viewRadius = 20;
+    this.player.rotation.y = 0;
+    const help = document.getElementById("help");
+    if (help) help.textContent = "WASD move · Space jump · Mouse orbit · Shift run · G collision mesh · V eyes";
+    void import("./splats/prototype")
+      .then(({ mountSplatPrototype }) =>
+        mountSplatPrototype({
+          canvas: this.canvas,
+          engine: this.engine,
+          scene: this.scene,
+          camera: this.camera,
+          player: this.player,
+          getWorld: () => this.world,
+          placeId: () => this.state.place,
+        }),
+      )
+      .then((prototype) => {
+        this.splatPrototype = prototype;
+      })
+      .catch((error: unknown) => {
+        console.error("Splat prototype failed to start", error);
+      });
   }
 
   // ---- setup ----
@@ -244,6 +296,7 @@ export class Game {
     this.refreshEmphasis();
     if (this.beaconHere(id)) this.raiseBeacon();
     this.applyHope();
+    this.splatPrototype?.onPlace(id);
   }
 
   private leavePlace(): void {
@@ -376,7 +429,7 @@ export class Game {
   private bindInput(): void {
     window.addEventListener("keydown", (e) => {
       this.keys.add(e.code);
-      if (this.started && e.code.startsWith("Arrow")) e.preventDefault();
+      if (this.started && (e.code.startsWith("Arrow") || (this.splatMode && e.code === "Space"))) e.preventDefault();
       if (!e.repeat) this.onKey(e.code);
     });
     window.addEventListener("keyup", (e) => this.keys.delete(e.code));
@@ -439,6 +492,7 @@ export class Game {
     else if (code === "KeyE") this.nearestInteraction()?.act();
     else if (code === "KeyH") this.toggleMount();
     else if (code === "KeyC") this.openCodex();
+    else if (code === "KeyG" && this.splatMode) this.splatPrototype?.toggleDebug();
     else if (code === "KeyV") this.setThirdPerson(!this.thirdPerson);
   }
 
@@ -473,7 +527,11 @@ export class Game {
     const paused = this.hud.dialogOpen || this.hud.codexOpen || this.travelOpen;
     this.playerSpeed = 0;
     if (!paused) {
-      this.movePlayer(dt);
+      if (this.splatPrototype?.ready && this.state.place === PLACE_EDEN) {
+        this.playerSpeed = this.splatPrototype.update(dt, this.keys, false);
+      } else {
+        this.movePlayer(dt);
+      }
       this.updateGuide(dt);
       this.updateWatchman(dt);
       this.checkVerses();
@@ -1981,6 +2039,10 @@ export class Game {
   }
 
   private persist(): void {
+    if (this.splatMode) {
+      this.saveClock = 0;
+      return;
+    }
     this.saveClock = 0;
     const s = this.state;
     s.px = this.player.position.x;
